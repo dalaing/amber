@@ -1025,7 +1025,11 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- each over an enumeration beyond 2^31 (upstream ngn/k 4dbf859f) ----
+t[`eachEnum;{x}'2147483646+!4;2147483646 2147483647 2147483648 2147483649]
+t[`eachEnumStr;$2147483647+!2;("2147483647";"2147483648")]
+
+hexpect[653]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
