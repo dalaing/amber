@@ -1025,7 +1025,12 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- x!y for a large modulus x (the atom path added x to the remainder and overflowed) ----
+t[`modLarge;(9223372036854775807!1;9223372036854775807!-1;5000000000000000000!4000000000000000000);1 9223372036854775806 4000000000000000000]
+t[`modAgreesVec;(9223372036854775807!1 -1)~(9223372036854775807!1),9223372036854775807!-1;1b]
+t[`modSmall;(7!2;7!-2;2!-7;-2!7;-2!-7;0!5);2 5 1 3 -4 5]
+
+hexpect[654]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
