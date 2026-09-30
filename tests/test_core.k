@@ -771,7 +771,10 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- a sparse deal from over 2^31 stays in range (upstream ngn/k ea79e42a) ----
+tv[`dealLarge;"r:-1000?5000000000;(~0>&/r;5000000000>|/r;1000=#?r)";1 1 1]
+
+hexpect[473]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
