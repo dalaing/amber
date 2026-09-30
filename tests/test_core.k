@@ -1025,7 +1025,10 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- a sparse deal from over 2^31 stays in range (upstream ngn/k ea79e42a) ----
+tv[`dealLarge;"r:-1000?5000000000;(~0>&/r;5000000000>|/r;1000=#?r)";1 1 1]
+
+hexpect[652]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
