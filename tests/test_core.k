@@ -1025,7 +1025,10 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- 0! of chars gives ints, as 1! does (upstream ngn/k 60d587e0) ----
+t[`modZeroChars;(0!"ab";1!"ab";0!"a");(97 98;0 0;97)]
+
+hexpect[652]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
