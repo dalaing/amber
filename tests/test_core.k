@@ -771,7 +771,12 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- x!y for a large modulus x (the atom path added x to the remainder and overflowed) ----
+t[`modLarge;(9223372036854775807!1;9223372036854775807!-1;5000000000000000000!4000000000000000000);1 9223372036854775806 4000000000000000000]
+t[`modAgreesVec;(9223372036854775807!1 -1)~(9223372036854775807!1),9223372036854775807!-1;1b]
+t[`modSmall;(7!2;7!-2;2!-7;-2!7;-2!-7;0!5);2 5 1 3 -4 5]
+
+hexpect[475]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
