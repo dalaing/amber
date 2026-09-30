@@ -771,7 +771,13 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- a dict whose keys are an empty generic list prints so it reads back ----
+t[`dictKeysEmptyText;`k@(0#,,1)!();"(0#,,0N)!()"]
+t[`dictKeysEmptyBack;{x~. `k@x}@(0#,,1)!();1b]
+t[`dictKeysEmptyParen;`k@()!();"()!()"]
+t[`dictKeysVec;`k@(`a`b!1 2);"`a`b!1 2"]
+
+hexpect[476]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
