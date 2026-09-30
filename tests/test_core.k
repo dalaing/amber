@@ -771,7 +771,13 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- empty generic lists order by prototype, so the order agrees with ~ ----
+t[`distinctEmpties;?(1;0#,1 2;();0#,1 2);(1;0#,0N 0N;())]
+t[`distinctEmptiesCount;#?(();0#,1 2;();0#,1 2;0#,"ab");3]
+t[`gradeEmpties;<(0#,1 2;();0#,1 2);1 0 2]
+t[`gradeEmptiesSorted;{s:x@<x;(<s)~!#s}@(0#,1 2;();0#,1 2;();0#,"ab");1b]
+
+hexpect[476]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
