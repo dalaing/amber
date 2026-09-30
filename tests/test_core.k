@@ -771,7 +771,11 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- each over an enumeration beyond 2^31 (upstream ngn/k 4dbf859f) ----
+t[`eachEnum;{x}'2147483646+!4;2147483646 2147483647 2147483648 2147483649]
+t[`eachEnumStr;$2147483647+!2;("2147483647";"2147483648")]
+
+hexpect[474]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
