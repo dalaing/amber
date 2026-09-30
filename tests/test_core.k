@@ -771,7 +771,10 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- 0! of chars gives ints, as 1! does (upstream ngn/k 60d587e0) ----
+t[`modZeroChars;(0!"ab";1!"ab";0!"a");(97 98;0 0;97)]
+
+hexpect[473]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
