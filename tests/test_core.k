@@ -1025,7 +1025,13 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- a dict whose keys are an empty generic list prints so it reads back ----
+t[`dictKeysEmptyText;`k@(0#,,1)!();"(0#,,0N)!()"]
+t[`dictKeysEmptyBack;{x~. `k@x}@(0#,,1)!();1b]
+t[`dictKeysEmptyParen;`k@()!();"()!()"]
+t[`dictKeysVec;`k@(`a`b!1 2);"`a`b!1 2"]
+
+hexpect[655]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
