@@ -771,7 +771,15 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- a float prints as the shortest text that is nearest to it ----
+/ (the values are built exactly, without reading a float literal)
+t[`fltPrint2m24;`k@1%16777216.0;"5.960464477539063e-8"]
+t[`fltPrint2p89;`k@*/89#2.0;"6.189700196426902e26"]
+t[`fltPrint2p62a;`k@`f$4350140171453357568;"4.3501401714533576e18"]
+t[`fltPrint2p61;`k@`f$2305844108725321728;"2.3058441087253217e18"]
+t[`fltPrintSmall;`k@0.5 0.25 1.5 100.0;"0.5 0.25 1.5 100.0"]
+
+hexpect[477]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
