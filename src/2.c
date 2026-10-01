@@ -59,7 +59,6 @@ Z A modzZ(L m,A y,U f)_(P(!m,ytC?cG(y):y)
  // (shifted in 64 bits: s can be up to 62, past the width of the narrow types)
  P(m<0&&m!=NL&&!(-m&(-m-1)),U s=(U)CTZ((W)-m);A z=an(yn,yt);S4(yw-3,F(zn,zg=(G)((L)yg>>s)),F(zn,zh=(H)((L)yh>>s)),F(zn,zi=(I)((L)yi>>s)),F(zn,zl=yl>>s))y(z))
  P(m<0,m=-m;A z=an(yn,yt);S4(yw-3,F(zn,C v=yg;zg=v<0?-1-~v/m:v/m),F(zn,H v=yh;zh=v<0?-1-~v/m:v/m),F(zn,I v=yi;zi=v<0?-1-~v/m:v/m),F(zn,L v=yl;zl=v<0?-1-~v/m:v/m))y(z))
- P(m<0,m=-m;A z=an(yn,yt);S4(yw-3,F(zn,C v=yg;zg=v<0?-1-~v/m:v/m),F(zn,H v=yh;zh=v<0?-1-~v/m:v/m),F(zn,I v=yi;zi=v<0?-1-~v/m:v/m),F(zn,L v=yl;zl=v<0?-1-~v/m:v/m))y(z))
  // amber 2.1: a general modulus used to read every element through iw() -- a
  // function call and two 64-bit divisions per element. Width-switched plain
  // loops with one division and a sign fix-up; 32-bit arithmetic when both the

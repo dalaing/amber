@@ -774,7 +774,13 @@ t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 2
 / ---- 0! of chars gives ints, as 1! does (upstream ngn/k 60d587e0) ----
 t[`modZeroChars;(0!"ab";1!"ab";0!"a");(97 98;0 0;97)]
 
-hexpect[473]
+/ ---- dividing chars by a negative int gives ints, as 0! and every other ! do ----
+t[`divChars;-2!"ab";48 49]
+t[`divCharsOne;-1!"ab";97 98]
+t[`divCharsHigh;-2!0x8081;-64 -64]
+t[`divCharsEmpty;@-2!"";`I]
+
+hexpect[477]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
