@@ -473,6 +473,9 @@ t[`serLeftKept9;{m:(-9 5000000000)0;m!-8!1 2;m}[];-9]
 t[`deserAttrKept;  (`at@-9!-8!`sa 1000 2000 3000;`at@-9!-8!`pa 3 3 1 1 2;`at@-9!-8!`ua 1 2 3);(`s;`p;`u)]
 t[`deserAttrBad;   {c:-8!`sa 1000 2000 3000;c[14 15 18 19]:(-8!3000 2000 1000)14 15 18 19;x:-9!c;(`at@x;<x;x?1000)}[];(`;2 1 0;2)]
 
+/ raze of dicts joins them into a dict, as , and {x,y}/ do
+t[`razeDicts;      (,/(`a`b!1 2;`c`d!3 4);,/(1 2!3 4;5 6!7 8));(`a`b`c`d!1 2 3 4;1 2 5 6!3 4 7 8)]
+
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it
 / advanced the parse cursor -- so `1e-309` left "e-309" in the input and the
