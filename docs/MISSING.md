@@ -101,10 +101,10 @@ Amber now ships `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` (raw-socket messaging) 
   handler dispatch, `.z.w`, websockets, TLS, and the full multi-process tickerplant / RDB / HDB /
   gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`).
 
-## 6. Attributes: 4 of 4 (setters); find accel on 2
+## 6. Attributes: 4 of 4 (setters); find accel on 1 (sorted)
 All four attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``)**,
-**parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted and parted**
-vectors take the O(log n) binary-search find path; grouped pairs with `fin.k`'s group index
+**parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted** vectors
+take the O(log n) binary-search find path (parted ones need not be in order, so they scan); grouped pairs with `fin.k`'s group index
 (`bysym`/`symrows`) for O(1) per-symbol slicing.
 - **Since 2.1.0:** every ascending value sort (`asc`, `x@<x`, `` `srt``, `xasc` on a flat
   numeric column) returns its result flagged `` `s``, so a later `?`, `in`, `bin` or `aj` on it
