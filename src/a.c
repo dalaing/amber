@@ -886,7 +886,11 @@ Z A1(qfb,P(!xtC,et(x))P(xn-8,el(x))x=rev(x);x(aV(tf,1,xV)))//float from bits
 Z L atcnt(A x,L code)_(A fa[3];fa[0]=az(code);fa[1]=x;fa[2]=au;A c=fredC(fa,3);P(!c,-1)gl(c))
 Z A1(qsa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==1,x)L d=atcnt(x,308);P(d<0,x(0))P(d,x(err0("s-fail")))x=mut(x);_at(x)=1;x)//amber: `s sorted
 Z A1(qua,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==2,x)A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);P(k!=xn,x(err0("u-fail")))x=mut(x);_at(x)=2;x)//amber: `u unique
-Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==3,x)L e=atcnt(x,310);P(e<0,x(0))A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);
+// a float vector with each zero spelled 0.0: = keeps -0.0 and 0.0 apart while distinct unites
+// them, so `pa counts runs and distinct values on this copy, where the two agree
+// (on the bits: build.sh has -fno-signed-zeros, under which x==0?0.0:x may compile to x)
+Z A pz0(A x)_(P(_t(x)-tF,_R(x))U n=xn;A y=aL(n);CO W*RES p=_V(x);W*RES q=_V(y);F(n,q[i]=p[i]<<1?p[i]:0)AT(tF,y))
+Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==3,x)A c=pz0(x);L e=atcnt(c,310);P(e<0,mr(c);x(0))A u=unq(c);P(!u,x(0))U k=_N(u);mr(u);
  P(xn&&(L)xn-e!=(L)k,x(err0("p-fail")))x=mut(x);_at(x)=3;x)//amber: `p parted: #runs = #distinct
 // whether x keeps the promise of attribute a (1 `s, 2 `u, 3 `p; 4 `g promises nothing), by the
 // checks `sa `ua `pa make, without an error: -9! (ser.c) keeps an attribute byte it reads only then
