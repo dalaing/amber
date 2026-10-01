@@ -771,7 +771,13 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- a one-item range as dict keys prints in parentheses, so it reads back ----
+t[`rangeKeyPrint;`k@(!1)!,2;"(,0)!,2"]
+t[`rangeKeyPrint5;`k@(5+!1)!,2;"(,5)!,2"]
+t[`rangeKeyRoundTrip;(. `k@(!1)!,2)~(!1)!,2;1]
+t[`rangeKeyTwo;`k@(!2)!3 4;"0 1!3 4"]
+
+hexpect[476]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
