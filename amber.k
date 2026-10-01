@@ -100,7 +100,7 @@ rotate:{$[0=#y;y;n:(#y)!x;(n_y),n#y]}
 /   1 2 3 except 2  ->  !0    where q gives  1 3
 / q accepts an atom on the right of all four, so this is parity as well as a fix.
 isatm:{"a"<*$@x}                                  / type symbol lowercase -> atom
-in:{y:$[isatm y;,y;y];r:`memb(x;y);$[`A~@r;~^y?x;r]}   / 2.1: one-pass C membership; K fallback for other types
+in:{y:$[isatm y;,y;y];$[~#y;$[isatm x;0b;(#x)#0b];[r:`memb(x;y);$[`A~@r;~^y?x;r]]]}   / 2.1: one-pass C membership; K fallback for other types; nothing is in an empty list
 / 2.1: fused group aggregates. `gagg (src/o.c) does acc[group]op=v in ONE pass
 / with the same first-appearance key order as =k; each wrapper keeps the
 / portable K definition as its fallback for shapes the kernel declines.
