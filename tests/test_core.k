@@ -771,7 +771,14 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- +/ of a range is the sum of its items, wrapped as int addition is ----
+t[`rangeSumOne;+/9223372036854775803+!1;9223372036854775803]
+t[`rangeSumWrap;+/4611686018427387904+!2;-9223372036854775807]
+t[`rangeSumThree;+/9223372036854775800+!3;9223372036854775787]
+t[`rangeSumSmall;+/-5+!1005;499485]
+t[`rangeSumTil;+/!10;45]
+
+hexpect[477]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
