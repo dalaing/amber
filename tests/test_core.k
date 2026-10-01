@@ -1025,7 +1025,13 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- a one-item range as dict keys prints in parentheses, so it reads back ----
+t[`rangeKeyPrint;`k@(!1)!,2;"(,0)!,2"]
+t[`rangeKeyPrint5;`k@(5+!1)!,2;"(,5)!,2"]
+t[`rangeKeyRoundTrip;(. `k@(!1)!,2)~(!1)!,2;1]
+t[`rangeKeyTwo;`k@(!2)!3 4;"0 1!3 4"]
+
+hexpect[655]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
