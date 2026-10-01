@@ -476,6 +476,7 @@ t[`deserAttrBad;   {c:-8!`sa 1000 2000 3000;c[14 15 18 19]:(-8!3000 2000 1000)14
 / int folds and scans wrap (computed in unsigned arithmetic: a signed overflow in C is undefined)
 t[`scanWrap;       (*\0N 0N;+\9223372036854775807 1;*\4294967296 4294967296);(0N 0;9223372036854775807 0N;4294967296 0)]
 t[`foldSeedWrap;   (5+/0N 0N;0N*/0N 3);(5;0)]
+t[`amendWrap;      ({x[0 1]*:-9223372036854775807;x}3#-1099511627776;{x[0]+:1;x}2#9223372036854775807);(3#-1099511627776;0N 9223372036854775807)]
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it
