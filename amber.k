@@ -228,7 +228,7 @@ qwhere:{[t;m]t@&m}
 / dict `a`b!(210.0;6) and flipping it raised 'length -- the single-aggregate
 / case only appeared to work because the each-result happened to be a 1-item
 / list whose single item was the atom. (),x leaves genuine vectors untouched.
-qselect:{[t;a]+(!a)!{[t;f](),f t}[t]'value a}
+qselect:{[t;a]+(!a)!{[t;f]r:f t;$[#r;(),r;r]}[t]'value a}   / (),r enlists an aggregate's atom; an empty column keeps its type ((),!0 is ())
 / ---- raw-column grouping: the qSQL fast path --------------------------------
 / qby/xgroup/ij used to group with  =rows[cols#+t] .  rows:{+. x} flips the
 / column dict into ONE BOXED K OBJECT PER ROW, so a 10M-row group-by allocated

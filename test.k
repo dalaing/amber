@@ -95,6 +95,7 @@ t[`xcols;cols xcols[`v;tt];`v`s`p]
 t[`meta;(!meta tt)`c;`s`p`v]
 
 / ---- joins ----
+qt:+`sym`n`px!(`a`b;1 2;0.5 1.0)
 lt:+`s`p!(`a`b`c`a;10 20 30 40)
 kv:xkey[`s;+`s`x!(`a`b;100 200)]
 t[`lj;(+lj[lt;kv])`x;100 200 0N 100]
@@ -108,6 +109,9 @@ t[`ljNewColumn;+lj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;100 300.0)]];`k`a`b
 t[`ljEmptyGeneric;+lj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`a!(0#0;())]];`k`a!(1 2 3;10 20 30)]   / an empty generic column matches nothing and is no type clash, as in q
 t[`ljAllMatch;(+lj[+`k`a!(1 2;10 20);xkey[`k;+`k`a!(1 2;5 6)]])`a;5 6]
 t[`ljAllMatchGeneric;(+lj[+`k`a!(1 2;(10;`y));xkey[`k;+`k`a!(1 2;5 6)]])`a;(5;6)]
+
+t[`selectEmptyTyped;qselect[qwhere[qt;qt[`n]>5];`n`px!({x`n};{x`px})];+`n`px!(!0;0#0n)]
+t[`selectAggAtom;qselect[qt;(,`s)!,{sum x`n}];+(,`s)!,,3]
 t[`ijRows;#ij[lt;kv];3]
 t[`uj;(+uj[+`a`b!(1 2;3 4);+`b`c!(5 6;7 8)])`c;0N 0N 7 8]
 t[`pj;(+pj[+`s`p!(`a`b`c;1 1 1);xkey[`s;+`s`p!(`a`b;10 20)]])`p;11 21 1]
