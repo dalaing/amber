@@ -771,7 +771,13 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- taking nothing from a generic list keeps a generic list of the first item's null, as in ngn/k (an empty table comes only from a table) ----
+t[`takeEmptyDictFirst;`k@'(0#((,`a)!,0;0);0#(1 2!3 4;0);0#(`a`b!1 2;`c`d!3 4));("0#,(,`a)!,0N";"0#,1 2!0N 0N";"0#,`a`b!0N 0N")]   / 2.4.1: empty tables, the second with int columns
+t[`takeEmptyDictShape;*0#(`a`b!(0;0 0);0N);`a`b!(0N;0N 0N)]
+t[`takeEmptyTable;`k@'(0#(`a`b!1 2;`a`b!3 4);0#,`a`b!1 2);("+`a`b!(!0;!0)";"+`a`b!(!0;!0)")]
+t[`dropEmptyDictFirst;`k@2_((,`a)!,0;1 2);"0#,(,`a)!,0N"]
+
+hexpect[476]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
