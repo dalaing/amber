@@ -771,7 +771,12 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- odometer of a list of dicts uses their values (upstream ngn/k d99849c6) ----
+t[`tilDicts;!(`a`b!1 2;`c`d!3 4);(1 1 2 2;3 4 3 4)]
+t[`tilLists;!(1 2;3 4);(1 1 2 2;3 4 3 4)]
+t[`tilKeyed;`k@!((+(,`k)!,1 2)!+(,`v)!,3 4;1 2);"(+(,`v)!,3 3 4 4;1 2 1 2)"]   / a keyed table uses its value table
+
+hexpect[475]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
