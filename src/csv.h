@@ -33,6 +33,8 @@
 #ifndef AMBER_CSV_H
 #define AMBER_CSV_H
 
+#include <stdint.h>   /* uint64_t in csv_fast's prototype (a.h does not bring it on every platform) */
+
 /* \csvr "path.csv" or `csvr[path]: read the file at `path` and return a
  * table (same shape as `([]col:vals;...)`). Returns the generic null atom
  * (au) and prints a message to stderr if the file cannot be opened. */
@@ -48,5 +50,14 @@ int csv_check(S path);
  * edge-case strings (AMBER_CSV_NUMTEST=n sets how many), then csv_check()
  * over a fixture battery and random files at 1..9 forced chunks. 1 = pass. */
 int csv_selftest(void);
+
+/* The unsigned decimal at [s,t), correctly rounded as a cell is read (the fast
+ * path, else strtod); the literal and JSON readers share it. */
+F csv_float(const char *s, const char *t);
+
+/* w*10^dx, correctly rounded, for w of at most 19 digits (*v, 1): Clinger's fast
+ * path, else the Eisel-Lemire method; 0 only where neither is built (wasm, or no
+ * 128-bit integers), and then the caller asks csv_float. */
+int csv_fast(uint64_t w, long long dx, F *v);
 
 #endif /* AMBER_CSV_H */

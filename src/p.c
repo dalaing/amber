@@ -1,4 +1,5 @@
 #include"a.h" // Amber parser - GNU AGPLv3 - see LICENSE and NOTICE
+#include"csv.h"   //csv_float: numbers read as a CSV cell reads them
 Z S s0,s;Z U k;Z A pb(A,C);Z A pe(A,C*);Z A ps();                                                   //parser state (s:current pointer, s0:start of source, k:implicit arg counter)
 U si(S s,C v)_(strchrnul(s,v)-(C*)s)                                                                //find char (string index)
 B id0(UC c)_(CAz(c)|(c|1)==0xd1)                                                                    //is identifier start char?
@@ -16,30 +17,28 @@ Z L plN(S*p)_(S t=*p+(**p=='-');L v=pl(p);W(*t=='0'&&C09(t[1]),t++)I n=*p-t;I(n>
 // propagates that as a full-range long. Feeding it straight into the int
 // exponent accumulator (`e+=pl(&s)`) is signed overflow -- undefined
 // behaviour reachable from a malformed literal such as `1.5e` or `1.5each`,
-// found by tests/fuzz.py under UBSan. Both the mantissa and the exponent are
-// now normalised before use: a no-digit mantissa reads as 0, and the exponent
-// is accumulated in L and clamped before it is narrowed to I.
+// found by tests/fuzz.py under UBSan. pfu now reads the exponent itself, saturating,
+// and no longer calls pl.
 //
 // amber 2.2: an exponent outside the power table's range used to return EARLY,
-// before `*p=s`, so the parse cursor was never advanced past it. `1e-309` left
-// `e-309` sitting in the input and the whole literal died with 'value; `1e309`
-// did the same. Every SUBNORMAL double was therefore unwritable as a literal --
-// which is a round-trip hole, not only a nuisance: std.k's text ser/deser is
-// `k followed by eval, so a table holding one serialised to text that could not
-// be read back.
+// before `*p=s`, so `1e-309` left `e-309` in the input ('value) and every
+// subnormal double was unwritable as a literal -- a round-trip hole, since std.k's
+// text ser/deser is `k followed by eval. The cursor now always moves past the
+// literal.
 //
-// Both returns now advance the cursor, and the small-exponent case scales in
-// two steps (v/1e308 then /1e(-e-308)) instead of answering 0, so a subnormal
-// parses to its actual value. Below about 1e-616 the result genuinely is 0.
-Z L pfu(S*p)_(S s=*p;W u=0;I e=0;W(C09(*s),I(!e&&(u<922337203685477580ull||u==922337203685477580ull&&*s<'8'),u=10*u+(W)(*s-'0'))E(e++)s++)*p=s;L v=(L)u;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)P(c=='N'&&!v,(*p)++;NFL)   //integer digits past the mantissa count in the exponent (pu wrapped them)
-  //parse float unsigned
- Z F t[309];I(!*t,*t=1;F(308,t[i+1]=10*t[i]))
- I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
- I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-700ll,MIN(400ll,d)))
- *p=s;   //the range checks hold for e from the digits too: a long fraction read t[e] past its end, and so would more than 327 integer digits now that they count in e
- I(e>308,return v?WFL:0;)   //0e400 is 0.0, as in q (ngn/k: 'value)
- I(e<-308,I(e<-616,return 0;)F r_=((F)v/t[308])/t[-e-308];return *(L*)&r_;)
- *(L*)A(e<0?v/t[-e]:v*t[e]))
+// pfu scans the literal (digits, `.` and digits, `e` and an exponent) and builds its
+// significand and exponent as it goes; csv_fast (src/csv.c) converts them exactly
+// (Clinger's fast path, else the Eisel-Lemire method), and a literal of more than 19
+// significant digits goes to csv_float, the CSV reader's strtod path. So a literal,
+// `F$ and a CSV cell with the same digits give the same double, and a float printed
+// and read back is the same float.
+Z W pfn(S s,S t)_(W u=0;I e=0;W(s<t,I(!e&&(u<922337203685477580ull||u==922337203685477580ull&&*s<'8'),u=10*u+(W)(*s-'0'))E(e=1)s++)u)   //0n's payload: the integer digits, as they were read before
+Z L pfu(S*p)_(S b=*p,s=b;W w=0;I n=0;L x=0;   //parse float unsigned: w the first 19 significant digits, n their count, x the exponent
+ W(C09(*s),I(n<19,w=10*w+(W)(*s-'0');n+=!!w)E(n++)s++)
+ C c=*s;P(c=='w',*p=s+1;WFL)P(c=='n',*p=s+1;(L)pfn(b,s)^NFL)P(c=='N'&&!w,*p=s+1;NFL)
+ I(c=='.',c=*++s;W(C09(c),I(n<19,w=10*w+(W)(c-'0');n+=!!w)E(n++)x--;c=*++s))
+ I(c=='e',B q=*++s=='-';s+=q;L d=0;W(C09(*s),I(d<1000000000000000ll,d=10*d+*s-'0')s++)x+=q?-d:d)   //an exponent with no digits counts as 0; it saturates far past any offset the digits can make up for
+ *p=s;F v;I(n>19||!csv_fast(w,x,&v),v=csv_float(b,s));L r;MC(&r,&v,8);r)   //exact in one step, else csv_float; the bits through memcpy (a pointer cast can lose them under -fno-signed-zeros)
 L pf(S*p)_(B m=**p=='-';(*p)+=m;L u=pfu(p),v=(*p)[-1]=='N'?u:(L)((W)m<<63)|u;(*p)+=**p=='f';v)  //parse float (the null 0N has no sign: -0N is 0n, as in ngn/k)
 Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;A x=0;                                                  //parse ints or floats (in chunks of 512)
  W(1,S q=s;W(*q-'0'<2u,q++)                                                                     //a boolean token (01b) in the strand: its bits

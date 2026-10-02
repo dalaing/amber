@@ -771,7 +771,38 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- float literals, `F$ and JSON numbers are correctly rounded (issue #5) ----
+/ fb gives a float's 64 bits, high byte first, so these check the exact double read
+fb:{8#|-8!x}
+t[`floatRound1e308;fb 1e308;0x7fe1ccf385ebc8a0]
+t[`floatRoundTieEven;fb 9007199254740993.0;0x4340000000000000]   / 2^53+1, halfway: ties to even
+t[`floatRoundMax;fb 1.7976931348623157e308;0x7fefffffffffffff]   / the largest double, not 0w
+t[`floatRound1em308;fb 1e-308;0x000730d67819e8d2]
+t[`floatRoundSubMax;fb `F$"2.2250738585072011e-308";0x000fffffffffffff]   / the largest subnormal
+t[`floatRoundSubMin;fb 5e-324;0x0000000000000001]
+t[`floatRoundHalfMinUp;fb `F$"2.4703282292062328e-324";0x0000000000000001]   / just over half the smallest subnormal
+t[`floatRoundHalfMinDown;fb `F$"2.4703282292062327e-324";0x0000000000000000]
+t[`floatRound2e53Exact;fb 1801439850948199.0;0x431999999999999c]   / below 2^53, but its digits with the .0 are not: the old reader rounded twice
+t[`floatRoundBig;fb 4.3501401714533576e18;0x43ce2f66b80d512f]
+/ more than 780 significant digits: the ones past that still decide a tie (here the digit 801 places after the point)
+t[`floatRoundLongTie;fb `F$"9007199254740993.",800#"0";0x4340000000000000]
+t[`floatRoundLongSticky;fb `F$"9007199254740993.",(800#"0"),"1";0x4340000000000001]
+t[`floatRoundLongInt;fb `F$"9007199254740993",(790#"0"),"1e-791";0x4340000000000001]
+t[`floatRoundEmptyExp;(1.5e;1e-);1.5 1.0]   / an exponent with no digits counts as 0, as before
+/ JSON numbers go through the same reader
+t[`jsonRound;fb'`j?"[0.3,2.5e-5,0.123456789]";(0x3fd3333333333333;0x3efa36e2eb1c432d;0x3fbf9add3739635f)]
+t[`jsonRoundMax;fb `j?"1.7976931348623157e308";0x7fefffffffffffff]
+t[`jsonRoundSub;fb `j?"5e-324";0x0000000000000001]   / was 'parse (q: these bits too)
+t[`jsonRoundHuge;`j?"[1e309,-1e309,1e-400]";(0w;-0w;0.0)]   / were 'parse; q: 0w -0w 0f
+t[`jsonRoundExp;`j?"-0.5E+2";-50.0]
+te[`jsonRoundNoExpDigits;"`j?\"[1e,2]\""]   / an exponent needs a digit, as in q
+te[`jsonRoundTwoSigns;"`j?\"1e+-5\""]   / one sign, as in q (the old reader read about 1e-5)
+t[`floatRoundLongOffset;fb `F$"0.",(400000#"0"),"17976931348623157e400309";0x7fefffffffffffff]   / a long exponent against a long offset (17 digits)
+t[`floatRoundLongDigitsOffset;fb `F$"0.",(200000#"0"),(26#"1"),"e200030";0x45f6704f4fab27ec]   / 26 digits, past the fast paths: strtod, with the long exponent and the long offset summed
+t[`floatRoundHugeExp;`k@(1e9999999999999999999;1e-9999999999999999999;`F$"1e9999999999999999999";`F$"-1e-9999999999999999999");"0w 0.0 0w -0.0"]   / an exponent past 64 bits saturates (it wrapped, reading backwards)
+t[`jsonRoundInRange;`j?"1000e-310";1e-307]   / was 'parse: only the exponent was past 308
+
+hexpect[497]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
