@@ -771,7 +771,12 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- taking one list key from a dict of list keys (upstream ngn/k 5f50f8e3) ----
+te[`takeListKey;"(1 2)#(1 2;3 4)!5 6"]
+t[`takeListKeys;(1 2;3 4)#(1 2;3 4)!5 6;(1 2;3 4)!5 6]
+t[`takeSymKeys;`a`c#`a`b`c!1 2 3;`a`c!1 3]
+
+hexpect[475]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
