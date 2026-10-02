@@ -771,7 +771,15 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- flip: an atom value is enlisted; bit lists; empty lists of tables (upstream ngn/k 7bf994cd) ----
+t[`flipAtom;`k@+(,`a)!,{x};"+(,`a)!,,{x}"]
+t[`flipCols;`k@+`a`b!(1 2;3 4);"+`a`b!(1 2;3 4)"]
+t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,::";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
+t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(+`a`b!(!0;!0);+`a`b!(!0;!0))";",+`a`b!(!0;!0)")]   / empty lists of tables: the prototype was read before it was set
+t[`flipBits;(+(01B;01B);+(101B;010B));((0 0;1 1);(1 0;0 1;1 0))]   / lists of bit booleans, read as bits
+t[`flipBits8;*+8#,11B;8#1]   / each column was read as 8-byte words of the lists
+
+hexpect[478]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
