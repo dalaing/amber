@@ -528,10 +528,10 @@ t[`fusedCharInt;+/0x806162<100;3]
 
 
 / ---- folds and scans of chars agree with the verbs: arithmetic reads chars as ints, < > unsigned (& |: next section) ----
-t[`charFoldOne;(%/,"a";|/,"a";+/,"a";*/,"a");(97;"a";97;97)]
-t[`charScan;(+\"ab";|\"ab";&\"ba";%\,"a");(97 195;"ab";"ba";,97)]
-t[`charFoldSeed;("a"+/!0;"a"%/!0;"a"+/();0x80</!0);97 97 97 128]
-t[`charFoldLess;(</"ab";</0x0080;<\0x800061);(1;1;128 0 1)]
+t[`charFoldOne;(%/,"a";|/,"a";+/,"a";*/,"a");("a";"a";97;97)]
+t[`charScan;(+\"ab";|\"ab";&\"ba";%\,"a");(97 195;"ab";"ba";,"a")]
+t[`charFoldSeed;("a"+/!0;"a"%/!0;"a"+/();0x80</!0);(97;"a";97;0x80)]
+t[`charFoldLess;(</"ab";</0x0080;<\0x800061);(1;1;(0x80;0;1))]
 t[`charFoldSum;(+/"ab";1+/"ab");195 196]
 
 
@@ -771,7 +771,20 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- a fold or scan of chars under % < > = starts from the first char as it is ----
+t[`charFirstFoldOne;(</,"a";>/,0x80;%/,"a";=/,"a";</,0xff);("a";0x80;"a";"a";0xff)]
+t[`charFirstFoldOneArith;(+/,"a";-/,"a";*/,"a";&/,0x80;|/,0x80);(97;97;97;0x80;0x80)]
+t[`charFirstScan;(<\"ab";>\0x80ff;%\"ab";<\"cba");(("a";1);(0x80;0);("a";97%98);("c";0;1))]
+t[`charFirstScanOne;(<\,"a";>\,0x80;%\,"a");(,"a";,0x80;,"a")]
+t[`charFirstScanTypes;(@<\"ab";@<\,"a";@%\,"a");`A`C`C]
+t[`charFirstScanUnsigned;<\0x806162;(0x80;0;1)]
+t[`charFirstScanLong;(*<\1000#"ab";#<\1000#"ab";+/1_<\1000#"ab");("a";1000;999)]
+t[`charFirstScanInts;(=\"ab";=\,"a";+\,"a";+\"ab");(97 0;,97;,97;97 195)]
+t[`charFirstSeedEmpty;("a"</!0;0x80>/"";"ab"%/!0;"a"=/());("a";0x80;"ab";"a")]
+t[`charFirstSeedEmptyArith;("a"+/!0;"a"&/!0;0x80|/"");(97;"a";0x80)]
+t[`charFirstLambda;(</,0x80;%\"ab";>\"ba");({x<y}/,0x80;{x%y}\"ab";{x>y}\"ba")]
+
+hexpect[483]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

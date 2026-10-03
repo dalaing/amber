@@ -63,16 +63,17 @@ A ucb(A),cub(A);
 #define CA (xtv&&xv<11&&xv&&xv-5&&xv-8>1u)  //+ - * % & | =: f/ f\ read chars as ints, as the verb does with a number
 #define CI(y) (CA&&y##tC)
 #define CF(y) (CI(y)&&(yN<2||xv==4||xv==10))  //unseeded: arf already folds 2 or more chars as ints for + - *, so only % = and short lists convert first (& | of chars go by MMC)
-#define LGC(c) (xtv&&xv-8<2u&&(c))          //< > with chars and a seed go item by item through the verb (char with char unsigned, with a number signed: issue #17), so y f/z is {x f y}/[y;z] and the last of y f\z; unseeded (and the seed of an empty fold), the chars are read as unsigned ints first
-Z A2(f1,/*01*/Yt(y)P(MMC&&ytC,P(!yN,y(ac(xv==6?-1:0)))CO UC*q_=(CO UC*)yV;UC m_=*q_;I(xv==6,F(yn,m_=q_[i]<m_?q_[i]:m_))E(F(yn,m_=q_[i]>m_?q_[i]:m_))y(ac((C)m_)))   /*& | of chars: unsigned, a char back, in one pass*/P(CF(y)||LGC(ytC),f1(x,xv-8<2u?ucb(y):cG(y)))P(xtv&&xv<11&&ytZFC&&!LGC(ytC),y(arf(x,0,y)))P(x==CAT,raz(y))P(!yN,y(ie(x,y)))A z=ii(y,0);F(yN-1,z=z(x2(z,ii(y,i+1)));B(!z))y(z))
-Z A3(f2,/*010*/P(MMC&&(ytc||ytC)&&ztC,A w=ucb(zR);A r=f2(x,ucb(y),w);mr(w);cub(r))P(CA&&ztC&&!(MMC&&(ytm||ytA)),A w=cG(zR);A r=f2(x,y,w);mr(w);r)   //the items too, as the seed
+#define LGC(c) (xtv&&xv-8<2u&&(c))          //< > with chars and a seed go item by item through the verb (char with char unsigned, with a number signed: issue #17), so y f/z is {x f y}/[y;z] and the last of y f\z; unseeded, the chars are read as unsigned ints first (the first item kept as it is: FC)
+#define FC (xtv&&(xv==4||xv-8<3u))          //% < > =: the first item of a fold or scan of chars (or a char seed over no items) is kept as it is, unconverted; =\ reads it as an int, as 2.3.1 and ngn/k do
+Z A2(f1,/*01*/Yt(y)P(MMC&&ytC,P(!yN,y(ac(xv==6?-1:0)))CO UC*q_=(CO UC*)yV;UC m_=*q_;I(xv==6,F(yn,m_=q_[i]<m_?q_[i]:m_))E(F(yn,m_=q_[i]>m_?q_[i]:m_))y(ac((C)m_)))   /*& | of chars: unsigned, a char back, in one pass*/P(FC&&ytC&&yn==1,y(ii(y,0)))P(CF(y)||LGC(ytC),f1(x,xv-8<2u?ucb(y):cG(y)))P(xtv&&xv<11&&ytZFC&&!LGC(ytC),y(arf(x,0,y)))P(x==CAT,raz(y))P(!yN,y(ie(x,y)))A z=ii(y,0);F(yN-1,z=z(x2(z,ii(y,i+1)));B(!z))y(z))
+Z A3(f2,/*010*/P(FC&&(ytc||ytC)&&!zN,y)P(MMC&&(ytc||ytC)&&ztC,A w=ucb(zR);A r=f2(x,ucb(y),w);mr(w);cub(r))P(CA&&ztC&&!(MMC&&(ytm||ytA)),A w=cG(zR);A r=f2(x,y,w);mr(w);r)   //the items too, as the seed
  P(!MMC&&(CI(y)||CA&&ytc),f2(x,ytc?ai((C)yv):cG(y),z))P(LGC(ytc||ytC)&&!zN,f2(x,ucb(y),z))Zt(y(x2(y,zR)))P(xtv&&xv<11&&ytzfc&&ztZFC&&!LGC(ytc||ztC)&&!(MMC&&ytc),arf(x,y,z))P(x==CAT,raz(N(cat10(enl(y),z))))P(xto||xtp,F(zN,y=N(x8(A8(y,ii(z,i)),2)))y)F(zN,y=y(x2(y,ii(z,i)));B(!y))y)
 L cfm(CO A*a/*0*/,I n)_(L m=-1;F(n,A x=a[i];I(!xtt,U v=xN;P(m>=0&&m-v,-2)m=v))m)
 AX(f8,/*01..1*/P(n==1,f1(x,*a))P(n==2,A y=*a,z=a[1];z(f2(x,y,z)))n--;A y=*a++,z=*a;L m=cfm(a,n);P(m==-1,y?x8(a-1,n+1):z)P(m<0,I(y,y(0))el8(a,n))P(!m&&!y,x=ie(x,z);mrn(n,a);x)
  L i=!y;I(i,y=ii(z,0))Ab8;W(i<m,*b=y;Fj(n,b[j+1]=ii(a[j],i))y=x8(b,n+1);B(!y)i++)mrn(n-1,a+1);z(y))
 Z A3(s2,/*010*/P(MMC&&(ytc||ytC)&&ztC&&zn,A w=ucb(zR);A r=s2(x,ucb(y),w);mr(w);cub(r))P(CA&&ztC&&zn&&!(MMC&&(ytm||ytA)),A w=cG(zR);A r=s2(x,y,w);mr(w);r)P(!MMC&&(CI(y)||CA&&ytc)&&zN,s2(x,ytc?ai((C)yv):cG(y),z))   //chars as ints, as the fold (an empty scan is the items as they are)
  Zt(y(x2(y,zR)))Zm(A u=N(s2(x,y,zy));am(_R(zx),u))P(!zN,y(zR))P(xtv&&xv<11&&ytzfc&&ztZFC&&!LGC(ytc||ztC),ars(x,y,z))A u=aA0(zN);F(zN,y=y(x2(y,ii(z,i)));P(!y,u(0))PSH(u,yR))y(u))
-Z A2(s1,/*01*/Yt(y)P(MMC&&ytC,P(!yN,y)cub(s1(x,ucb(y))))P(CI(y)||LGC(ytC),s1(x,xv-8<2u?ucb(y):cG(y)))P(!yN,y)Ym(A z=kv(&y);am(y,Ny(s1(x,z))))P(x==CAT,y(s2(x,emp(tA),y)))P(xtv&&xv<11&&ytZFC&&!LGC(ytC),y(ars(x,0,y)))
+Z A2(s1,/*01*/Yt(y)P(MMC&&ytC,P(!yN,y)cub(s1(x,ucb(y))))P(FC&&xv-10&&ytC&&yn,P(yn==1,y)A z=Ny(s1(x,xv-8<2u?ucb(yR):cG(yR)));y(K2("{@[y;0;:;*x]}",y,z)))P(CI(y)||LGC(ytC),s1(x,xv-8<2u?ucb(y):cG(y)))P(!yN,y)Ym(A z=kv(&y);am(y,Ny(s1(x,z))))P(x==CAT,y(s2(x,emp(tA),y)))P(xtv&&xv<11&&ytZFC&&!LGC(ytC),y(ars(x,0,y)))
  A z=ii(y,0),u=enl(zR);F(yN-1,z=z(x2(z,ii(y,i+1)));P(!z,y(u(0)))PSH(u,zR))z(y(u)))
 Z AX(s8,/*01..1*/A y=*a;P(n==1,s1(x,y))P(n==2,A z=a[1];z(s2(x,y,z)))L m=cfm(a+1,n-1);P(m==-2,el8(a,n))I(m<0,m=1)a++;n--;
  A z=aA0(m);Ab8;F(m,*b=y;Fj(n,b[j+1]=ii(a[j],i))y=x8(b,n+1);P(!y,mrn(n,a);z(0))PSH(z,yR))mrn(n,a);y(z))
