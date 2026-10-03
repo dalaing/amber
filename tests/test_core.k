@@ -221,6 +221,10 @@ t[`litStampDateBad;TL"2026.02.30D10:00:00";`$"'parse"]
 t[`litStampHour24;TL"2026.07.30D24:00:00.000";`i$2026.07.31D00:00:00.000]
 t[`litStampHour99;TL"2026.07.30D99:00:00.000";`i$2026.08.03D03:00:00.000]
 t[`litTemporalGood;TL'("2024.02.29";"2000.02.29";"2026.04.30";"24:00:00.000";"99:00:00.000");8825 59 9616 86400000 356400000]
+/ a time is 32 bits of milliseconds: a literal past 596:31:23.647 is 'limit, as an int literal past 64 bits (issue #62; it wrapped)
+t[`litTimeLimit;TL'("596:31:23.648";"1000:00:00.000";"18446744073709551616:00:00.000");3#`$"'limit"]
+t[`litTimeTop;TL'("596:31:23.647";"00000000000000000001:00:00.000");2147483647 3600000]
+t[`mktLimit;(.[{`mkt x};,2147483648;{(x?"\n")#x}];`i$`mkt -2147483648);("'limit";-2147483648)]
 
 / ---- float literals past 2^63: the integer digits no longer wrap ----
 t[`floatLitBig;`k@12345678901234567890.0;"1.2345678901234567e19"]
@@ -1025,7 +1029,7 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+hexpect[654]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
