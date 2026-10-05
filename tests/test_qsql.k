@@ -305,6 +305,10 @@ t[`qaggGrouped; value sel"select mxf:max f, mnf:min f, af:avg f, sf:sum f, s:sum
 / ---- an empty grouped select keeps each column's type (from its aggregate, as q) ----
 t[`byEmptySum;  @(.(sel"select sum px by sym from ft where px>1000"))`px; `F]
 t[`byEmptyLast; @(.(sel"select by sym from ft where px>1000"))`px; `F]
+/ an empty temporal column has no type to keep (it's a general list): max, min and sum of it stay (), not ints (A112)
+TT:([]sym:`a`b;n:1 2;d:10:00:00.000 11:00:00.000)
+t[`byEmptyTemporal;  (.(sel"select mx:max d, mn:min d, s:sum d by sym from TT where n>5"))@/:`mx`mn`s; (();();())]
+t[`byEmptyTemporal0; `k@(.(sel"select mx:max d, c:count d, l:last n by sym from 0#TT"))@/:`mx`c`l; "(();!0;!0)"]
 
 / ---- digest #39: constraints cascade, as q's (each sees the rows the earlier ones kept); #40: a leading minus ----
 tq[`whereCascade;     "select from trades where sym=`a, px=max px";   ([]sym:,`a; px:,60.0; sz:,6)];
@@ -313,6 +317,6 @@ tq[`whereLocalAnd;    "select from trades where sym=`a, px>25";       ([]sym:`a`
 tq[`execNegLead;      "exec -1+sz from trades";                       0 1 2 3 4 5];
 tqa[`updNegLead;      "update d:-1+sz from trades"; {(+x)`d};         0 1 2 3 4 5];
 
-hexpect[176]
+hexpect[178]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]
