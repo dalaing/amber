@@ -363,6 +363,16 @@ tqa[`iByStrKey;   "select c:count n by s like \"i*\" from TS where i>0"; CL; `s`
 T5:([]sym:`a`b`a; n:1 2 1)
 t[`iFuncDistinct;   ?[T5;,(>;`i;-1);1b;()];                         ([]sym:`a`b; n:1 2)]
 
-hexpect[212]
+/ a : inside a `symbol, a string or a lambda is not an item's name:expr
+TC:([]f:`:a`:b`:a; n:1 2 3)
+tq[`colonSymExec;  "exec f=`:b from TC";                              010b];
+tqa[`colonSymSel;  "select f=`:b from TC"; {(+x)@*cols x};           010b];
+tq[`colonStrItem;  "select n,\"a:b\" from TC";                        ([]n:1 2 3;x:"a:b")];
+tqa[`colonSymBy;   "select c:count n by f=`:b from TC"; {value(+value x)`c}; 2 1];
+tq[`colonSymExBy;  "exec n by f=`:b from TC";                         01b!(1 3;,2)];
+tq[`colonLambda;   "exec {x:1;x+y}[n;n] from TC";                     2 3 4];
+tq[`colonNamed;    "exec a:f=`:b from TC";                            010b];
+
+hexpect[219]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]
