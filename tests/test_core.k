@@ -1025,7 +1025,15 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- ?[c;a;b] with c of 0s and 1s is q's vector conditional, with no library loaded ----
+tv[`vcondAtoms;"?[1 0 1;1;9]";1 9 1]
+tv[`vcondList;"?[1 0 1;1 2 3;9]";1 9 3]
+tv[`vcondEmpty;"?[!0;0;0]";!0]
+tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
+/ the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
+tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
+
+hexpect[656]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
