@@ -195,7 +195,12 @@ qexby:{[u;wh;eb]r:qrun[u;wh;(eb 0;eb 1;1b);""];k:+key r;v:+value r;$[1=#!k;k@*!k
 
 / ---- update  (add / replace columns; optional where and by) ---------------
 qasg:{[t;idx;nm;v]@[$[in[nm;cols t];(+t)nm;(#t)#qnull v];idx;:;v]}
-qasgby:{[t;nm;f;gi;rc;w]tp:$[#rc;qproj[t;rc];t];gv:{[t;f;iv]v:f atr[t;iv];$[isat v;(#iv)#v;v]}[tp;f]'gi;rv:raze gv;ri:raze gi;$[~w;rv@<ri;[c:$[in[nm;cols t];(+t)nm;(#t)#qnull[*gv]];$[#gi;@[c;ri;:;rv];c]]]}   / each group once; every row: back in row order, else one scatter into the column
+qasgby:{[t;nm;f;gi;rc;w]tp:$[#rc;qproj[t;rc];t];$[0=#gi;:qasg0[t;nm;f;tp;w];];gv:{[t;f;iv]v:f atr[t;iv];$[isat v;(#iv)#v;v]}[tp;f]'gi;rv:raze gv;ri:raze gi;$[~w;rv@<ri;[e:in[nm;cols t];c:$[e;(+t)nm;(#t)#qnull[*gv]];r:@[c;ri;:;rv];$[e&(~`A~@c)&~(@r)~@c;`err"type";r]]]}   / each group once; every row: back in row order, else one scatter into the column (a value that changes a typed column's type is 'type, as q)
+/ no groups (an empty table, or a where that keeps no row): the column is typed by the expression on no rows, as q's:
+/ an atom's type, or a typed vector itself while no column it reads is general (first st of no strings is "", q ());
+/ anything else (an error, a general list) is (), and a new column is filled
+/ with the atom's null (0N for a temporal, as qnull), or with () for a vector (update m:sums f ... where: q (();();()))
+qasg0:{[t;nm;f;tp;w]v:.[f;,0#tp;{`qa0err}];p:$[`qa0err~v;();isat v;0#,v;(`A~@v)||/`A=@'.+0#tp;();0#v];$[~w;p;in[nm;cols t];(+t)nm;isat v;(#t)#$[`A~@p;0N;p@0];(#t)#,()]}
 / update ... by: the groups of the rows the where-clause keeps (all of them without one), each expression once per group
 qupby:{[t;wh;byp;nm;fns;it]m:qmask[t;wh];w:0<#m;ix:$[w;&m;()];gi:{(qgrp[x 0;x 1])1}qbyx[$[w;t ix;t];byp];gi:$[w;ix@gi;gi];+((+t),nm!{[t;gi;w;n;f;e]qasgby[t;n;f;gi;qrefs[cols t;(qname e)1];w]}[t;gi;w]'[nm;fns;it])}
 upd:{[s]s:qnorm s;s:$[(6#s)~"update";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];r3:qsplit[r2 0;" by "];t:. qtry r2 1;$[qpt t;`err"par";];C:cols t;it:qcut r3 0;nm:qnms[C;it];fns:{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qupby[t;wh;r3 1;nm;fns;it];0=#wh;+((+t),nm!{[t;f]v:f t;$[isat v;(#t)#v;v]}[t]'fns);[m:qmask[t;wh];idx:&m;sub:qwhere[t;m];+((+t),nm!{[t;idx;sub;n;f]qasg[t;idx;n;f sub]}[t;idx;sub]'[nm;fns])]]}   / no where: each column is the value itself, attribute and all
@@ -214,7 +219,8 @@ qfa:{[t;a]v:qfe[t]'value a;k:!a;$[&/isat'v;+k!,'v;+k!{[l;x]$[isat x;l#x;x]}[#t]'
 qfsg:{[t;e]$[(`A~@e)&2=#e;[f:*e;c:e 1;$[(`s~@c)&in[c;cols t];$[f~sum;(`sum;c);f~avg;(`avg;c);f~min;(`min;c);f~max;(`max;c);f~count;(`count;c);f~first;(`first;c);f~last;(`last;c);()];(c~`i)&f~count;(`count;*cols t);()]];()]}
 qfby:{[t;b;a]bk:!b;t2:+(+t),bk!qfe[t]'value b;sg:$[0<#a;qfsg[t]'value a;()];fa:$[(0<#sg)&&/{0<#x}'sg;qaggf[t2;bk;(!a)!sg;()];()];$[#fa;:qks fa;];$[0=#a;[nk:except[cols t;bk];qby[t2;bk;nk!qlastf'nk]];qby[t2;bk;(!a)!{[e]{[e;x]qfe[x;e]}[e]}'value a]]}
 qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];t:$[0=#c;t;t qfi[t;c]];$[(b~0b)|b~();$[0=#a;t;qfa[t;a]];b~1b;?$[0=#a;t;qfa[t;a]];qfby[t;b;a]]}
-qfub:{[t;idx;b;a]k:+(!b)!qfe[t idx]'value b;gi:idx@value(=rows k);+((+t),(!a)!{[t;gi;w;n;e]qasgby[t;n;{[e;x]qfe[x;e]}[e];gi;();w]}[t;gi;(#idx)<#t]'[!a;value a])}
+qfcs:{[C;e]$[`s~@e;$[in[e;C];,e;0#`];(`A~@e)&0<#e;?,/qfcs[C]'e;0#`]}   / the columns a parse tree names (as qrefs for a string)
+qfub:{[t;idx;b;a]k:+(!b)!qfe[t idx]'value b;gi:idx@value(=rows k);+((+t),(!a)!{[t;gi;w;n;e]qasgby[t;n;{[e;x]qfe[x;e]}[e];gi;qfcs[cols t;e];w]}[t;gi;(#idx)<#t]'[!a;value a])}
 qfupd:{[t;c;b;a]t:$[`s~@t;. t;t];idx:$[0=#c;!#t;qfi[t;c]];$[`S~@a;$[0=#a;t@&~@[(#t)#0b;idx;:;1b];+(except[cols t;a])#+t];((b~0b)|b~())&0=#c;+((+t),(!a)!{[t;e]v:qfe[t;e];$[isat v;(#t)#v;v]}[t]'value a);(b~0b)|b~();+((+t),(!a)!{[t;idx;n;e]qasg[t;idx;n;qfe[t idx;e]]}[t;idx]'[!a;value a]);qfub[t;idx;b;a]]}
 qexec:{[t;w;b;d]t:$[0=#w;t;qwhere[t;w]];$[0=#b;$[0=#d;t;qselect[t;d]];qby[t;b,();d]]}
 
