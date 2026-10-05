@@ -1025,7 +1025,11 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- an empty generic list joined to an empty list keeps its prototype; only () gives way (2.7) ----
+t[`joinEmptyGenericProto;`k@'((0#,1 2),0#,"ab";(0#,,0N),0#,,();(0#,1 2),();(),0#,"ab");("0#,0N 0N";"0#,,0N";"0#,0N 0N";"0#,\"  \"")]
+t[`joinEmptyGenericDictCmp;`k@'(((0#,1 2)!())=(0#`)!!0;((0#,1 2)!0#0n)<(0#`)!!0);2#,"(0#`)!!0"]
+
+hexpect[653]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
