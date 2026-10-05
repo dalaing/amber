@@ -464,6 +464,19 @@ t[`dictTyped;((`a!1.5)+`b!2.5;(`a`b!1 2)-`b`c!10 20);(`a`b!1.5 2.5;`a`b`c!1 -8 -
 t[`dictEmptyUntyped;((`a`b!1 2)+()!();((1 2;3 4)!5 6)+()!();(()!())-`a`b!1 2;(()!())+()!());(`a`b!1 2;(1 2;3 4)!5 6;`a`b!-1 -2;()!())]
 t[`dictEmptyTyped;(`a`b!1 2)+(0#`)!!0;`a`b!1 2]
 t[`dictEmptyVals;(((0#`)!())-`a`b!1 2;(`a`b!1 2)+(0#`)!());(`a`b!-1 -2;`a`b!1 2)]   / empty values () filled nothing: `a`b!(!0;!0)
+/ Two empty dicts: the values combine as lists do, (!0)+0#0n is 0#0n, whichever dict is on the left (x's came back)
+t[`dictEmptyBothTyped;`k'{(x+y;y+x;y-x;y*x;y%x;y&x;y|x)}[(0#`)!0#0n;(0#`)!!0];7#,"(0#`)!0#0n"]
+t[`dictEmptyBothEach;`k'(((0#`)!!0),'(0#`)!0#0n;(!0),'0#0n);("(0#`)!0#,(0N;0n)";"0#,(0N;0n)")]
+t[`dictEmptyBothProto;`k'(((0#`)!0#0n)+(0#`)!0#,1 2;((0#`)!0#,1 2)+(0#`)!0#0n);2#,"(0#`)!0#,0n 0n"]   / 0#,1 2 is not ()
+t[`dictEmptyBothType;*"\n"\.[.:;,"((0#`)!0#`)+(0#`)!!0";{x}];"'type"]   / as (0#`)+!0 and q
+t[`dictEmptyBothKeys;`k'(((0#`)!!0)+(!0)!0#0n;((!0)!0#0n)+(0#`)!!0);("(0#`)!0#0n";"(!0)!0#0n")]   / x's keys, as for keys of different types with values (q: 'type)
+/ ()!() gives the other dict, either way round, as q; () values alone take the list rule, () keys give way to y's
+t[`dictEmptyBothUntyped;`k'{(x+y;y+x;x-y;y-x)}[()!();(0#`)!!0];4#,"(0#`)!!0"]
+t[`dictEmptyBothUntypedSym;`k'{(x+y;y+x)}[()!();(0#`)!()];2#,"(0#`)!()"]   / q: (`symbol$())!() both ways
+t[`dictEmptyBothUntypedVals;`k'{(x+y;y+x)}[(0#`)!();(0#`)!0#0n];2#,"(0#`)!0#,0#0n"]   / as ()+0#0n
+t[`dictEmptyBothUntypedType;*"\n"\.[.:;,"((0#`)!())+(0#`)!0#`";{x}];"'type"]   / as ()+0#` (q: (`symbol$())!())
+t[`dictEmptyBothUntypedKeys;`k'{(x+y;y+x)}[()!0#0n;(0#`)!!0];2#,"(0#`)!0#0n"]
+t[`dictEmptyBothUntypedEach;`k'(((0#`)!()),'(0#`)!0#0n;((0#`)!0#0n),'(0#`)!();(()!()),'(0#`)!!0;((0#`)!!0),'()!();(()!0#0n),'(0#`)!!0);(2#,"(0#`)!0#,,0n"),(2#,"(0#`)!!0"),,"(0#`)!0#,(0n;0N)"]   / q: (`symbol$())!()
 
 / ---- the fused masked sums equal the unfused expression, bit for bit ----
 fu:{[x;m]`k@+/x@&m};un:{[x;m]i:&m;d:x@i;`k@+/d}
@@ -693,7 +706,7 @@ t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
 / a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
 t[`temporalStrand;(2026.01.01 2026.01.02;12:00:00.000 13:00:00.000;#2026.01.01 2026.01.02 2026.01.03;1+2026.01.01 2026.01.02;5#.[.:;,"2026.01.01 12:00:00.000";{x}])~(2026.01.01+0 1;12:00:00.000+0 3600000;3;2026.01.02+0 1;"'type");1]   / Digest #65: a strand of one kind is a list, as q
 t[`groupMixedRank;(=(1;"ab");=(1 2;1);=(1;"ab";1);(1;"ab")?"ab";((1;"ab")!10 20)"ab";5#.[?;(("ab";"cd");1);{x}]);((1;"ab")!(,0;,1);(1 2;1)!(,0;,1);(1;"ab")!(0 2;,1);1;20;"'rank")]   / Digest #29: as q
-t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!();(0#`)!!0)"]
+t[`dictEmptyBoth;`k'((()!())+#'=0#`;(#'=0#`)+()!());2#,"(0#`)!!0"]
 / Digest #23 #25 #26: a key on one side passes its value through; x's repeated keys stay
 t[`dictOneSide;((`a`b!1 2)|`c!,1 2;(`a`b!(1 2 3;3))|`a`c!(5;6 7);(`a`b!0x0102)|`b`c!0x0304;(`a`b!0x0102)&`b`c!0x0304);(`a`b`c!(1;2;1 2);`a`b`c!(5 5 5;3;6 7);`a`b`c!0x010304;`a`b`c!0x010204)]
 t[`dictRepeatKey;((`a`a!1 2)+`a!10;(`a`a!1 2)*`b!3);(`a`a!11 2;`a`a`b!1 2 3)]
@@ -1025,7 +1038,7 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+hexpect[662]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 
