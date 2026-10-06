@@ -227,6 +227,8 @@ Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U n
    LO[i]=s;HI[i]=hi<s?s:hi;
    cbase[g]=b;ck0[g]=k0;ck1[g]=k1;clo_[g]=lo;chi_[g]=hi;)}
 // Pass 2, float column -> float result. c: 0=first 1=last 2=min 3=max 4=sum 5=avg.
+// min, max, sum and avg skip nulls, as q's: a NaN never wins a compare, sum adds 0 for it and avg divides by
+// the values that are not null (none: 0n); first and last are the end quotes, null or not.
 Z V wjrFF(CO F*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,F*RES o){
  switch(c){
  case 0: for(U i=0;i<nt;i++){U a=LO[i];o[i]=a<HI[i]?p[a]:NF;} break;
@@ -241,21 +243,22 @@ Z V wjrFF(CO F*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,F*RES o){
            o[i]=r;} break;
  case 4: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];F r=0;
            WJSIMD(+:r)
-           for(U k=a;k<b;k++)r+=p[k];
+           for(U k=a;k<b;k++)r+=p[k]==p[k]?p[k]:0;
            o[i]=r;} break;
- default: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];F r=0;   /* 5 = avg */
-           WJSIMD(+:r)
-           for(U k=a;k<b;k++)r+=p[k];
-           o[i]=b>a?r/(F)(b-a):NF;} break;
+ default: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i],m=0;F r=0;   /* 5 = avg */
+           WJSIMD(+:r,m)
+           for(U k=a;k<b;k++){B v=p[k]==p[k];r+=v?p[k]:0;m+=v;}
+           o[i]=m?r/(F)m:NF;} break;
  }}
-// Pass 2, long column -> long result. c: 0=first 1=last 2=min 3=max 4=sum.
+// Pass 2, long column -> long result. c: 0=first 1=last 2=min 3=max 4=sum. min and sum skip 0N (NL); max
+// needs no test, as no value is below -0W, where it starts.
 Z V wjrLL(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,L*RES o){
  switch(c){
  case 0: for(U i=0;i<nt;i++){U a=LO[i];o[i]=a<HI[i]?p[a]:NL;} break;
  case 1: for(U i=0;i<nt;i++){U b=HI[i];o[i]=LO[i]<b?p[b-1]:NL;} break;
  case 2: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];L r=WL;
            WJSIMD(min:r)
-           for(U k=a;k<b;k++)r=p[k]<r?p[k]:r;
+           for(U k=a;k<b;k++)r=p[k]<r&&p[k]!=NL?p[k]:r;
            o[i]=r;} break;
  case 3: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];L r=-WL;
            WJSIMD(max:r)
@@ -265,15 +268,15 @@ Z V wjrLL(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,L*RES o){
  // signed sum the old code computed but without the undefined behaviour.
  default: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];W r=0;   /* 4 = sum */
            WJSIMD(+:r)
-           for(U k=a;k<b;k++)r+=(W)p[k];
+           for(U k=a;k<b;k++)r+=p[k]==NL?0:(W)p[k];
            o[i]=(L)r;} break;
  }}
-// Pass 2, long column -> float result (avg only: the one reducer that widens).
+// Pass 2, long column -> float result (avg only: the one reducer that widens), over the values that are not 0N.
 Z V wjrLF(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,F*RES o){
- for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];F r=0;
-   WJSIMD(+:r)
-   for(U k=a;k<b;k++)r+=(F)p[k];
-   o[i]=b>a?r/(F)(b-a):NF;}}
+ for(U i=0;i<nt;i++){U a=LO[i],b=HI[i],m=0;F r=0;
+   WJSIMD(+:r,m)
+   for(U k=a;k<b;k++){B v=p[k]!=NL;r+=v?(F)p[k]:0;m+=v;}
+   o[i]=m?r/(F)m:NF;}}
 // Pass 2, count: source-independent, it is just the window width.
 Z V wjrCNT(CO U*RES LO,CO U*RES HI,U nt,L*RES o){F(nt,o[i]=(L)(HI[i]-LO[i]))}
 A ucb(A),tjn(A);B tjs(A,A);
