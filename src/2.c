@@ -380,7 +380,7 @@ Z AM_TLS_IE U f;//0=dex,1=add,2=sub,3=mul,4=dvd,5=mod,6=mnm,7=mxm,8=ltn,9=gtn,10
 // amber: native temporal scalar arithmetic.  date/time/timestamp atoms carry
 // their base units (days/ms/ns); + and - keep the temporal type, temporal-minus-
 // same-temporal yields a plain int (a difference), comparisons yield bool.
-Z L tval(A x)_(UC k=_t(x);k==tdt||k==ttm?(L)(I)x:k==tnp?*(L*)_V(x):gl_(x))
+Z L tval(A x)_(UC k=_t(x);k==tdt||k==ttm?(L)(I)x:k==tnp?*(L*)_V(x):k==tf?(L)__builtin_round(*_F(x)):gl_(x))//a float (only one within the int range): rounded half away from zero, as q casts it to the temporal
 Z A tmk(UC k,L w)_(k==tdt?adt((I)w):k==ttm?atm((I)w):k==tnp?antp(w):az(w))
 // v2 convention: consume y, leave x for the caller (bv opcode releases x; bV borrows a constant x).
 // Only the documented cases (issue #18): a temporal plus or minus an int (either side), one minus the same
@@ -388,6 +388,7 @@ Z A tmk(UC k,L w)_(k==tdt?adt((I)w):k==ttm?atm((I)w):k==tnp?antp(w):az(w))
 // operand's low bits, so date+2.3 or date*2 were silent nonsense, and % ! returned x as it was. A null int is 'domain:
 // There is no null date, time or timestamp to give (date+0N was the date). x:y is y (it gave x) - digest #27
 Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;P(!op,y)
+ P(op>=8&&(ka==tf||kb==tf)&&!(__builtin_fabs(*_F(qa?y:x))<0x1p63),P(qa,A u=az(tval(x));u(ari(u,y)))L w=tval(y);mr(y);ari(x,az(w)))  //with a float, compare the stored number with the float rounded to an int, as q (it read the float's bits: date<2.5 was 1); 0n, -0w 0w and floats past the int range go the int-float way
  I(op<8,B ia=ka==ti||ka==tl,ib=kb==ti||kb==tl;
   B ok=qa&&qb?((op==2||op==6||op==7)&&ka==kb)||(op==1&&ka==ttm&&kb==ttm):(op==1||op==2)&&(qa?ib:ia);P(!ok,et(y))
   P(!(qa&&qb)&&(qa?tval(y):tval(x))==NL,ed(y)))
