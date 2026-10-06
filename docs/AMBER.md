@@ -503,7 +503,7 @@ Some table and dict rules:
   drop it, except that two `` `p `` lists joined keep `` `p `` while the result is still parted.
 * `` update `g#a from t `` and `` select `s#a from t `` work, and the column keeps its name.
 
-`tests/test_attr.k` has 535 of these cases with q's answers written in, and the session fuzzer ran
+`tests/test_attr.k` has 541 of these cases with q's answers written in, and the session fuzzer ran
 12,000 random ones against q with no difference.
 
 ### Why it makes search faster

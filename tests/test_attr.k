@@ -556,7 +556,13 @@ ta[`a531;"attr (`p#1 1),(`g#2 2)";"`"]   / join p g
 ta[`a532;"attr (`p#1 1),2 2";"`"]   / join p plain
 ta[`a533;"attr (`s#1 2),(`s#3 4)";"`"]   / join s s
 ta[`a534;"((`p#1 1),(`p#2 2))~1 1 2 2";"1"]   / join p p data
+ta[`a535;"attr (`s#()),()";"`s"]   / join s empty general, empty general
+ta[`a536;"attr (`u#()),()";"`u"]   / join u empty general, empty general
+ta[`a537;"attr (),`s#()";"`"]   / join empty general, s empty general
+ta[`a538;"attr (`s#()),`s#()";"`s"]   / join s empty general, s empty general
+ta[`a539;"attr (),`s#(1 2;3 4)";"`s"]   / join empty general, s general
+ta[`a540;"attr (),`s#1 2";"`s"]   / join empty general, s ints
 
-hexpect[535]
+hexpect[541]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]
