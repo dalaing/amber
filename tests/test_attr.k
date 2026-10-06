@@ -544,7 +544,19 @@ ta[`a519;"attr key group `s#2001.01.01 2001.01.01 2001.01.02";"`s"]   / group ke
 ta[`a520;"(key group `s#1 1 2)~1 2";"1"]   / group keys of s data
 ta[`a521;"attr value group `s#1 1 2";"`"]   / group values of s
 ta[`a522;"attr key group `s#1 2!4 3";"`"]   / group of s dict
+ta[`a523;"attr (`p#1 1),(`p#2 2)";"`p"]   / join p p parted
+ta[`a524;"attr (`p#enlist 0N),(`p#enlist 0N)";"`p"]   / join p p nulls
+ta[`a525;"attr (`p#1 1),(`p#2 1)";"`"]   / join p p not parted
+ta[`a526;"attr (`p#1 1 2),(`p#2 2 3)";"`p"]   / join p p run across
+ta[`a527;"attr (`p#`a`a),(`p#`b`b)";"`p"]   / join p p syms
+ta[`a528;"attr (`p#00b),`p#11b";"`p"]   / join p p bools
+ta[`a529;"attr (`p#01b),`p#10b";"`"]   / join p p bools not parted
+ta[`a530;"attr (`p#2001.01.01 2001.01.01),`p#2001.01.02 2001.01.02";"`p"]   / join p p dates
+ta[`a531;"attr (`p#1 1),(`g#2 2)";"`"]   / join p g
+ta[`a532;"attr (`p#1 1),2 2";"`"]   / join p plain
+ta[`a533;"attr (`s#1 2),(`s#3 4)";"`"]   / join s s
+ta[`a534;"((`p#1 1),(`p#2 2))~1 1 2 2";"1"]   / join p p data
 
-hexpect[523]
+hexpect[535]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]

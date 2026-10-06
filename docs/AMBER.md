@@ -498,11 +498,12 @@ Some table and dict rules:
 * `` `s#d `` on a dict (or keyed table) checks the keys and makes lookups step: `` (`s#1 3 5!`a`b`c) 4 ``
   is `` `b ``, the value at the last key not above 4. Below the first key you get a null.
 * What keeps one is what q keeps: `asc` gives `` `s ``, `distinct` keeps `` `s `` and turns `` `u ``/`` `g ``
-  into `` `u `` (and `group`'s keys do the same), and anything that hands back the same list (`(count x)#x`, `x,()`, `raze enlist x`).
-  `reverse`, appends, indexing, arithmetic and amends drop it.
+  into `` `u `` (and `group`'s keys do the same), and anything that hands back the same list
+  (`(count x)#x`, `x,()`, `raze enlist x`). `reverse`, appends, indexing, arithmetic and amends
+  drop it, except that two `` `p `` lists joined keep `` `p `` while the result is still parted.
 * `` update `g#a from t `` and `` select `s#a from t `` work, and the column keeps its name.
 
-`tests/test_attr.k` has 508 of these cases with q's answers written in, and the session fuzzer ran
+`tests/test_attr.k` has 535 of these cases with q's answers written in, and the session fuzzer ran
 12,000 random ones against q with no difference.
 
 ### Why it makes search faster

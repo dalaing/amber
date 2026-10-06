@@ -58,7 +58,9 @@ A2(cat10,
  Ymt(psh(x,yR))
  P(xtM||ytM,P(!yN,x)P(!xN,x(yR))P(xtT||ytT,x=N(blw(x));y=Nx(blw(yR));cat11(x,y))P(!xtM||!ytM,et(x))P(!mtc_(xx,yx),ed(x))A z=e2f(cat,xy,_R(yy));x(z?aM(_R(xx),z):0))Q(0);0)
 A2(cat11,y(cat10(x,y)))
-A2(cat,/*01*/P(!_tP(x)&&_t(x)==tm&&_at(x)==1,y(et0()))P(!_tP(x)&&_t(x)==tA&&!_n(x)&&_t(xx)==tC&&!_n(xx)&&!_tP(y)&&_t(y)<tM,y)   /*2.7: (),y is y; not 0#,1 2 (its prototype joins)*/cat11(xR,y))   //2.7: a dict made `s takes no more keys, as in q ('type)
+I tjk(A);A tjn(A);Z UC ptd(A z)_(I k=_t(z)==tA?tjk(z):0;A g=_t(z)==tB?cG(_R(z)):k>1?tjn(z):_R(z);P(!g,0)UC o=atok(g,3);mr(g);o)   //is z parted, by `p#'s check (bools as bytes, dates and times by their values)
+A2(cat,/*01*/P(!_tP(x)&&_t(x)==tm&&_at(x)==1,y(et0()))P(!_tP(x)&&_t(x)==tA&&!_n(x)&&_t(xx)==tC&&!_n(xx)&&!_tP(y)&&_t(y)<tM,y)   /*2.7: (),y is y; not 0#,1 2 (its prototype joins)*/   //2.7: a dict made `s takes no more keys, as in q ('type)
+ B p=!_tP(x)&&!_tP(y)&&_t(x)-tE&&_t(y)-tE&&_at(x)==3&&_at(y)==3&&_n(x)&&_n(y);A z=cat11(xR,y);P(!p||!z||!ptd(z),z)z=mut(z);_at(z)=3;z)   //two `p lists: `p while the result is still parted, as q
 A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))
  P(xtE,psh(gZ(x),y))   //a range has no room to push into: its items do (sup below keeps it a range, so it looped)
  P(xtG&&yti&&yv==(G)yv||xtC&&ytc,apc(x,yv))

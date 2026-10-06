@@ -127,9 +127,11 @@ grouped pairs with `fin.k`'s group index
   vector stored 16 bits or wider, takes the O(log n) path without an explicit `` `sa``.
 - **Still missing:** dedicated find/`where=` acceleration driven by the `` `u`` / `` `g``
   attribute *itself* (grouped speed currently comes from the separate group index, not the
-  attribute), and general **attribute preservation through ops**. Apart from sorts, the flag
-  is dropped whenever an op builds a new vector, whereas q keeps/drops attributes by defined
-  per-op rules.
+  attribute).
+- **Kept through ops as q keeps it:** `asc` (general lists too), `distinct`, `group`'s keys,
+  `(count x)#x`, `x,()`, `raze enlist x`, and a join of two parted lists that is still parted
+  (AMBER.md §9). Other ops that build a new vector drop it, where q keeps some (`` `p `` through
+  `raze`, for one).
 
 ## 7. Enumerations, foreign keys, linked columns
 `` `sym$`` enumeration domains, `.Q.en`, foreign keys (`` `t$`` and dotted `order.customer.name`
@@ -224,8 +226,8 @@ tickerplant** `hopen`/`u.*` (§5).
    currently comes from `fin.k`'s separate group index rather than from the attribute itself.
    Wiring the attribute into the C find path (as sorted already is) would make it automatic.
 3. **Missing atom types** (§2): `short`/`real`/`byte`/`guid` and their typed nulls/infinities.
-4. **Attribute preservation through ops** (§6): keep/drop attributes by q's per-op rules instead
-   of always dropping on a new allocation.
+4. **Attribute preservation through the remaining ops** (§6): the ops listed there keep or give
+   one as q does; the rest still drop it on a new allocation, where q keeps some.
 5. **True partitioned/mmap HDB** (§4): a date-partitioned, memory-mapped on-disk format beyond
    the current text splay, plus `.Q.dpft`/`.Q.en`.
 6. **Live REPL syntax highlighting**, meaning colouring tokens *as you type*, not just on a line you've
