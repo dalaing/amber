@@ -28,7 +28,7 @@ first:{*x}
 last:{*|x}
 reverse:{|x}
 distinct:{$[isat x;`err"type";[a:`at x;r:?x;$[a~`s;`s#r;in[a;`u`g];`u#r;`#r]]]}   / An atom: 'type as q (?5 is a random deal); q's attributes: `s stays, `u and `g give `u
-group:{$[isat x;`err"type";=x]}     / =5 is the unit matrix
+group:{$[isat x;`err"type";[g:=x;a:$[in[@x;`m`M];`;`at x];$[a~`s;(`s#!g)!. g;in[a;`u`g];(`u#!g)!. g;g]]]}     / =5 is the unit matrix; the keys are distinct x, so they take its attribute as distinct does
 where:{&x}
 flip:{$[`m~@x;$[`M~@!x;+x;&/isat'. x;`err"rank";+x];1=#x;$[isat x;`err"rank";+x];+x]}   / A dict of atoms: 'rank as q (+ makes one-row columns)
 count:{#x}
