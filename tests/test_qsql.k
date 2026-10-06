@@ -513,6 +513,27 @@ tq[`strSemi;       "select from TQS where s like \"a;b\"";              1#TQS];
 tq[`strEscQuote;   "exec \"a\\\")\" from TQS";                          "a\")"];
 tq[`strEnd;        "(exec s from TQS where s like \"a;b\"),,\"x)\"";    ("a;b";"x)")];
 
-hexpect[323]
+/ a where whose value is an atom keeps every row (1b) or none (0b), as q: it is not a one-item mask
+tq[`whAtom1b;      "select from trades where 1b";                       trades];
+tq[`whAtom1bI;     "select i from trades where 1b";                     ([]x:!6)];
+tq[`whAtom0b;      "select from trades where 0b";                       0#trades];
+tq[`whAtomAnd;     "select from trades where 1b,0b";                    0#trades];
+tq[`whAtomExec;    "exec sz from trades where 1b";                      1 2 3 4 5 6];
+tq[`whAtomBy;      "exec count sz by sym from trades where 1b";         `a`b`c!3 2 1];
+tq[`whAtomUpd;     "update z:sz from trades where 1b";                  +(+trades),(,`z)!,1 2 3 4 5 6];
+tq[`whAtomDel;     "delete from trades where 0b";                       trades];
+t[`whAtomFunc;     ?[trades;,1b;0b;()];                                 trades]
+t[`whAtomFuncLater; ?[trades;((>;`px;15);1b);0b;()];                    1_trades]
+t[`whAtomFuncDel;  ![trades;,0b;0b;0#`];                                trades]
+/ any other atom is not a boolean: 'type, as q (it was every row, the first row, or 'domain)
+tqe[`whAtomNull;     "select from trades where 0N"];
+tqe[`whAtomFloat;    "select from trades where 1.5"];
+tqe[`whAtomSym;      "select from trades where `a"];
+tqe[`whAtomChar;     "exec sz from trades where \"a\""];
+tqe[`whAtomFNull;    "update z:0 from trades where 0n"];
+tqe[`whAtomCascade;  "select from trades where px>15, 0N, sz>avg sz"];
+te[`whAtomFuncNull;  "?[trades;((>;`px;15);0N);0b;()]"];
+
+hexpect[341]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]
