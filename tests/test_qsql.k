@@ -534,6 +534,19 @@ tqe[`whAtomFNull;    "update z:0 from trades where 0n"];
 tqe[`whAtomCascade;  "select from trades where px>15, 0N, sz>avg sz"];
 te[`whAtomFuncNull;  "?[trades;((>;`px;15);0N);0b;()]"];
 
-hexpect[341]
+/ a later constraint that reads other rows sees only the rows the earlier ones kept, as q: indexing by a column
+/ (n 0, m n), in with a column on its right, and match all read other rows, though they look like n>1
+TL:([]n:1 2 3 4 5 6;m:6 2 3 1 5 4)
+tq[`casIndex;     "select from TL where n>1,n>n 0";                     TL 2 3 4 5];
+tq[`casIndexCol;  "select from TL where n>1,m>m n";                     TL 1 4 5];
+tq[`casInCol;     "select from TL where n>3,n in m";                    TL 3 4];
+tq[`casMatch;     "select from TL where n>2,n~3 4 5 6";                 TL 2 3 4 5];
+tq[`casInLit;     "select from TL where n>2,n in 3 4";                  TL 2 3];
+tq[`casGlobalIx;  "select from TL where n>2,(10 20 30 40 50 60 70 m)>35"; TL 2 4 5];
+/ and what still keeps to its row: a monadic ~, a , between literals
+tq[`casMonoNot;   "select from TL where n>1,~n=4";                      TL 1 2 4 5];
+tq[`casLitJoin;   "select from TL where n>1,n in (2,5)";                TL 1 4];
+
+hexpect[349]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

@@ -58,7 +58,16 @@ qcw:{[t;C;i;e]h:$[qhi e;~|/in[`i,qI;C];0];r:qrefs[C;e];v:qfn[$[h;C,qI;C];e]$[h;+
 qlw:`in`within`like`not`null`abs`neg`floor`ceiling`signum`string`lower`upper`mod`div`xbar
 qlwd:{[C;w]s:`$w;c:*w;$[in[s;C]|in[s;qlw]|s~`i;1;(~(c<"0")|c>"9")&~|/w="_";1;[v:.[{.x};,s;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]]]}   / A word that keeps a row to itself
 qblank:{[e]$[~|/(e="\"")|e="`";e;[s:e;q:qsmask s;s:@[s;&q|s="\"";:;" "];w:qword 0+s;rid:+\~~':w;bt:&s="`";p:1+bt;p:p@&p<#s;pc:p@&":"=s p;p:p@&w p;b:w&@[(1+#s)#0b;rid p;:;1b]rid;$[#pc;[c:w|(s=".")|(s=":")|(s="/")|s="-";rc:+\~~':c;b|:c&@[(1+#s)#0b;rc pc;:;1b]rc];];s:@[s;bt;:;" "];@[s;&b;:;" "]]]}   / strings and `symbols blanked (a `: symbol takes in . / _ - :, as Amber's pfh; a plain one is a word, _ and all, where Amber stops at _)
-qloc:{[C;e]s:qblank e;w:qword 0+s;b:&~~':w;tk:b _ s;ok:&/1,qlwd[C]'tk@&w b;oi:&~w|s=" ";o:s oi;ok&:&/1,in[o;"=<>~+-*%&|$,.()"];nsi:&~s=" ";mp:oi@&in[o;"*|&,<>=+"];ok&&/1,{[s;w;nsi;p]j:nsi?p;$[j=0;0;[q:nsi j-1;c:s q;$[w q;1;c=")";1;(|/c="<>")&|/(s p)="=>";1;0]]]}[s;w;nsi]'mp}   / No aggregate, adverb or monadic first/where/count
+qloc:{[C;e]qlb[C;e;qblank e]}
+qlb:{[C;e;s]w:qword 0+s;b:&~~':w;tk:b _ s;ok:&/1,qlwd[C]'tk@&w b;oi:&~w|s=" ";o:s oi;ok&:&/1,in[o;"=<>~+-*%&|$,.()"];v:w|(s=" ")&~e=" ";nsi:&v|~s=" ";mp:oi@&in[o;"*|&<>=+"];ok&qlj[C;e;s]&&/1,{[s;v;nsi;p]j:nsi?p;$[j=0;0;[q:nsi j-1;c:s q;$[v q;1;c=")";1;(|/c="<>")&|/(s p)="=>";1;0]]]}[s;v;nsi]'mp}   / No aggregate, adverb, monadic first/where/count, match, index or join
+/ qlb: qloc on e's text s, strings and `symbols blanked. qlj: nothing indexed by juxtaposition or by . with a column
+/ or a bracket on the left (n 0, m n, (n)0, n "a", n . 0), whose index is another row's value; a global or a literal on
+/ the left (L n, 1 2 3 n) looks each row up for itself. in and within only with no column on their right (n in 1 2 3,
+/ sym in syms; not n in m). ~ only monadic (~null px; not n~m), and , only between literals (`a,`b; not n,m). qltk: the
+/ tokens of e, with their classes (2 a word, 1 a literal, which s holds as blanks, 0 a mark) and texts.
+qltk:{[e;s]w:qword 0+s;cl:(2*w)+(s=" ")&~e=" ";st:&((cl>0)&~cl=-1_0N,cl)|(cl=0)&~s=" ";(cl st;trim'st _ s)}
+qlj:{[C;e;s]k:qltk[e;s];$[0=#k 0;:1;];tc:k 0;tx:k 1;cw:(tc=2)&{[C;x]in[`$x;C,`i]}[C]'tx;vb:(tc=2)&{in[`$x;qlw]}'tx;op:tx~\:,"(";cp:tx~\:,")";dp:+\op-cp;ok:qlx[tx;tc=1;cw|cp;(tc=1)|cp|(tc=2)&~vb];ok&:~|/0,(-1_cw|cp)&1_op|(tc=1)|(tc=2)&~vb;ok&&/1,{[cw;dp;j]r:(j+1)_!#dp;r:(*(&dp[r]<dp j),#r)#r;~|/cw r}[cw;dp]'&(tx~\:"in")|tx~\:"within"}
+qlx:{[tx;li;cl;oe]p:{0,-1_x};(~|/0,(p oe)&tx~\:,"~")&(~|/0,(tx~\:,",")&~(p li)&1_li,0)&~|/0,(tx~\:,".")&p cl}   / ~ after an operand, , beside a non-literal, . after a column
 / qdec: drop a trailing K comment from a query string.
 / A "/" that STARTS a token -- at the beginning of the string, or preceded by a
 / space or a tab -- and is not inside a "…" literal begins a comment.  The qSQL
