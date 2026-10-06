@@ -70,7 +70,7 @@ A1(kr,kp(x,"","","qruvw"))
 A1(kw,kp(x,"AC","IFS","Mmpqw"))
 A1(kT1,Q(xtT)Q(xN==1)pre(',',N(kr(fir(x)))))
 X1(kst,R_(x(aCz("???")))
- RA(    xn==1?kT1(x):!xn&&!(_t(xx)==tC&&!_n(xx))?cat11(aCz("0#,"),N(kst(x(_R(xx))))):par(jc(';',N(ek(x)))))
+ RA(    xn==1?kT1(x):!xn&&!(_t(xx)==tC&&!_n(xx))?cat11(aCz("0#,"),N(kr(x(_R(xx))))):par(jc(';',N(ek(x)))))   //the prototype as kT1 prints an item: 0#,(::), as 0#,:: read back as a function
  RC(    xn==1?kT1(x):kss(x))
  RGHILF(xn==1?kT1(x):xn?jc(32,e1f(str,x)):x(aCz(xtF?"0#0n":"!0")))
  RS(    xn==1?kT1(x):xn?raz(ek(x)):x(aCz("0#`")))
