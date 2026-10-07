@@ -1,0 +1,154 @@
+# Fork only, not for the pull request: the colouring allocator on hosted runners, main against this branch.
+#
+# Each sweep job is one runner and one palette period. It builds the branch's base (its merge-base with
+# upstream main) and the branch once each, the branch with src/m.c's CP set to the job's period, and times
+# them paired in shuffled rounds (.github/colour-ci/colour_sweep.py). Runners differ in CPU model from job
+# to job, so each job records its CPU and L1D, and results are compared within a job only. The summary job
+# puts every job's ratios in one table, a column per job.
+name: colour
+
+on:
+  push:
+    branches: [colour-allocator]
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: "paired rounds per job"
+        default: "15"
+      upstream:
+        description: "repository whose main the branch is compared with"
+        default: "https://github.com/BonucciAndrea/amber"
+
+concurrency:
+  group: colour-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  ROUNDS: ${{ inputs.rounds || '15' }}
+  UPSTREAM: ${{ inputs.upstream || 'https://github.com/BonucciAndrea/amber' }}
+
+jobs:
+  sweep:
+    name: ${{ matrix.os }}, period ${{ matrix.period }}, rep ${{ matrix.rep }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04        # x86-64: AMD EPYC and Intel models both turn up
+          - ubuntu-24.04-arm    # Neoverse (16 KB L1 set stride)
+          - macos-15            # Apple arm64 (M1)
+          - macos-15-intel      # Intel Mac
+        period: [4096, 16384]
+        rep: [1]
+        include:                # a second run on the x86 Linux runner, to sample another CPU model
+          - os: ubuntu-24.04
+            period: 4096
+            rep: 2
+          - os: ubuntu-24.04
+            period: 16384
+            rep: 2
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: colour
+
+      - name: the base (the branch's merge-base with upstream main), in a separate checkout
+        shell: bash
+        run: |
+          cd colour
+          git fetch -q "$UPSTREAM" main
+          b=$(git merge-base HEAD FETCH_HEAD)
+          echo "base $b, branch $(git rev-parse HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
+          git worktree add -q --detach ../base "$b"
+          if grep -q '^#define CP ' ../base/src/m.c; then echo "the base already colours"; exit 1; fi
+
+      - name: palette period ${{ matrix.period }} (the branch only)
+        shell: bash
+        run: |
+          cd colour
+          perl -pi -e 's/^#define CP [0-9]+/#define CP ${{ matrix.period }}/' src/m.c
+          test "$(grep -c '^#define CP ${{ matrix.period }}' src/m.c)" = 2
+          git diff --stat
+
+      - name: machine
+        shell: bash
+        run: |
+          {
+            echo "### ${{ matrix.os }}, period ${{ matrix.period }}, rep ${{ matrix.rep }}"
+            echo '```'
+            if [ "$(uname)" = Darwin ]; then
+              sysctl machdep.cpu.brand_string hw.l1dcachesize hw.cachelinesize hw.perflevel0.l1dcachesize 2>/dev/null || true
+              sysctl machdep.cpu.cache 2>/dev/null || true
+            else
+              lscpu | grep -E 'Model name|Vendor|L1d|^CPU\(s\)'
+              grep -H . /sys/devices/system/cpu/cpu0/cache/index0/{level,type,size,ways_of_associativity,coherency_line_size} || true
+            fi
+            cc --version | head -1
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: build both (the default build; gcc on Linux, clang on macOS)
+        shell: bash
+        run: |
+          (cd base && sh build.sh)
+          (cd colour && sh build.sh)
+          printf '%s\n' '+/!10' | ./base/amber
+          printf '%s\n' '+/!10' | ./colour/amber
+
+      - name: the branch's quick suites at this period
+        shell: bash
+        timeout-minutes: 20
+        run: cd colour && bash tests/run_tests.sh --quick
+
+      - name: same answers (the case file prints timings, so check windows, a group and a prior directly)
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          e='\l amber.k
+          \l std.k
+          N:1000000;PX:0.001*100000!2654435761*!N;sy:`$"s",'"'"'$100!1000003!6364136223846793005*!N;g:group sy
+          {`0:$x}'"'"'(+/msum[100;PX];+/mavg[100;PX];+/mdev[100;PX];+/mmin[100;PX];#g;+/(value g)[;7];+/|'"'"':PX);'
+          a=$(cd base && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber)
+          b=$(cd colour && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber)
+          echo "$a"; test -n "$a" && test "$a" = "$b"
+
+      - name: paired rounds
+        shell: bash
+        timeout-minutes: 50
+        run: |
+          python3 colour/.github/colour-ci/colour_sweep.py --base base --colour colour \
+            --cases colour/.github/colour-ci/colour_cases.k --period ${{ matrix.period }} --cc cc \
+            --label "${{ matrix.os }} rep ${{ matrix.rep }}" --rounds "$ROUNDS" \
+            --json sweep-${{ matrix.os }}-${{ matrix.period }}-${{ matrix.rep }}.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: colour-${{ matrix.os }}-${{ matrix.period }}-${{ matrix.rep }}
+          path: sweep-${{ matrix.os }}-${{ matrix.period }}-${{ matrix.rep }}.json
+
+  summary:
+    name: summary
+    needs: sweep
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/colour-ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: colour-*
+          path: results
+          merge-multiple: true
+      - name: one table over every job
+        shell: bash
+        run: |
+          ls results
+          python3 .github/colour-ci/colour_sweep.py --summary results/*.json
