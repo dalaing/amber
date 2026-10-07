@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Main against the colouring branch, paired in rounds on one machine (adapted from placemat's
+"""Main against colour builds, paired in rounds on one machine (adapted from placemat's
 scripts/probes/sqlite_sweep.py):
 
-    python3 colour_sweep.py --base DIR --colour DIR --cases colour_cases.k [--rounds N] [--seed S] [--label L]
-                            [--period P] [--json OUT]
+    python3 colour_sweep.py --arm base=DIR --arm c4096=DIR --arm c16384=DIR --cases colour_cases.k
+                            [--rounds N] [--seed S] [--label L] [--cc CC] [--json OUT]
     python3 colour_sweep.py --summary JSON...      (one table over several jobs' JSON files)
 
-DIR is a built checkout (./amber in it). Each arm runs the case file in a fresh process, one thread, from
-its own checkout (so each loads its own amber.k and std.k). One discarded run of each arm first; then every
-round runs both arms once in a fresh random order. For each case (pass 1 and pass 2 separately) the
-per-round ratio colour/base gives a median, how many rounds agree in sign, and a bootstrap 95% interval of
+Each DIR is a built checkout (./amber in it); the first --arm is the base. Each arm runs the case file in a
+fresh process, one thread, from its own checkout (so each loads its own amber.k and std.k). One discarded run
+of each arm first; then every round runs all the arms once, in a fresh random order. For each case (pass 1
+and pass 2 separately) and each pair (every other arm against the base, and the other arms against each
+other), the per-round ratio gives a median, how many rounds agree in sign, and a bootstrap 95% interval of
 the median; each arm's p90/p10 over rounds shows whether it switches between two speeds. The machine (CPU
 model, L1D size, ways, line and set stride) is recorded, since hosted runners mix models from job to job:
 compare within a job only.
@@ -28,6 +29,13 @@ import sys
 from pathlib import Path
 
 
+def sysctl(name: str) -> str:
+    try:
+        return subprocess.run(["sysctl", "-n", name], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        return ""
+
+
 def cpu_name() -> str:
     """The CPU's model (as placemat's scripts/probes/run.py: hosted runners mix AMD and Intel models)."""
     m = {}
@@ -43,13 +51,6 @@ def cpu_name() -> str:
     if m.get("CPU implementer"):
         return f"arm {m.get('CPU implementer')}/{m.get('CPU part', '?')}"
     return sysctl("machdep.cpu.brand_string") or "?"
-
-
-def sysctl(name: str) -> str:
-    try:
-        return subprocess.run(["sysctl", "-n", name], capture_output=True, text=True).stdout.strip()
-    except OSError:
-        return ""
 
 
 def l1d() -> dict:
@@ -116,21 +117,28 @@ def boot(rs: list[float], rnd: random.Random, n: int = 2000) -> tuple[float, flo
     return ms[int(0.025 * n)], ms[int(0.975 * n) - 1]
 
 
-def analyse(runs: list[dict], seed: int) -> dict:
+def pairs_of(arms: list[str]) -> list[tuple[str, str]]:
+    base, rest = arms[0], arms[1:]
+    return [(a, base) for a in rest] + [(rest[i], rest[j]) for i in range(len(rest)) for j in range(i + 1, len(rest))]
+
+
+def analyse(runs: list[dict], arms: list[str], seed: int) -> dict:
     rounds = sorted({x["round"] for x in runs})
     by = {(x["round"], x["arm"]): x["times"] for x in runs}
-    cases = list(by[(rounds[0], "base")])
+    cases = list(by[(rounds[0], arms[0])])
     rnd = random.Random(seed)
     out = {}
     for c in cases:
-        b = [by[(r, "base")][c] for r in rounds]
-        k = [by[(r, "colour")][c] for r in rounds]
-        rs = [y / x for x, y in zip(b, k)]
-        m = st.median(rs)
-        lo, hi = boot(rs, rnd)
-        out[c] = {"ratio": m, "lo": lo, "hi": hi, "agree": sum((x > 1) == (m > 1) for x in rs), "n": len(rs),
-                  "base_us": st.median(b), "colour_us": st.median(k),
-                  "base_p90p10": q(b, 0.9) / q(b, 0.1), "colour_p90p10": q(k, 0.9) / q(k, 0.1)}
+        t = {a: [by[(r, a)][c] for r in rounds] for a in arms}
+        e = {"us": {a: st.median(t[a]) for a in arms}, "p90p10": {a: q(t[a], 0.9) / q(t[a], 0.1) for a in arms},
+             "pairs": {}}
+        for a, b in pairs_of(arms):
+            rs = [y / x for x, y in zip(t[b], t[a])]
+            m = st.median(rs)
+            lo, hi = boot(rs, rnd)
+            e["pairs"][f"{a}/{b}"] = {"ratio": m, "lo": lo, "hi": hi, "agree": sum((x > 1) == (m > 1) for x in rs),
+                                      "n": len(rs)}
+        out[c] = e
     return out
 
 
@@ -142,59 +150,77 @@ def l1_text(c: dict) -> str:
     return f"L1D {c['size'] // 1024} KB {ways}, {c.get('line')} B lines, {stride}"
 
 
+def ckey(name: str) -> tuple:
+    n, p = name.split("/")
+    return (p, n)
+
+
 def markdown(r: dict) -> str:
-    L = [f"## Colouring, palette period {r['period']} B, {r.get('label', '')}: {r['machine']}, {r['cpu']} "
-         f"({l1_text(r['l1d'])}), `{r['cc']}` ({r['rounds']} rounds, the two arms in random order per round)", "",
-         "| case | pass | base ms | colour ms | colour/base (95% interval) | rounds agreeing | base p90/p10 | colour p90/p10 |",
-         "|---|---|---:|---:|---|---:|---:|---:|"]
-    for name, a in sorted(r["analysis"].items(), key=lambda kv: (kv[0].split("/")[1], kv[0])):
+    arms, prs = r["arms"], [f"{a}/{b}" for a, b in pairs_of(r["arms"])]
+    L = [f"## Colouring, {r.get('label', '')}: {r['machine']}, {r['cpu']} ({l1_text(r['l1d'])}), `{r['cc']}` "
+         f"({r['rounds']} rounds, the arms in random order per round)", "",
+         "| case | pass | " + " | ".join(f"{a} ms" for a in arms) + " | " + " | ".join(f"{p} (95%)" for p in prs)
+         + " | " + " | ".join(f"{a} p90/p10" for a in arms) + " |",
+         "|---|---|" + "---:|" * len(arms) + "---|" * len(prs) + "---:|" * len(arms)]
+    for name in sorted(r["analysis"], key=ckey):
+        a = r["analysis"][name]
         n, p = name.split("/")
-        L.append(f"| {n} | {p} | {a['base_us'] / 1000:.2f} | {a['colour_us'] / 1000:.2f} | {a['ratio']:.3f} "
-                 f"({a['lo']:.3f} to {a['hi']:.3f}) | {a['agree']}/{a['n']} | {a['base_p90p10']:.2f} | {a['colour_p90p10']:.2f} |")
+        L.append(f"| {n} | {p} | " + " | ".join(f"{a['us'][x] / 1000:.2f}" for x in arms) + " | "
+                 + " | ".join(f"{a['pairs'][x]['ratio']:.3f} ({a['pairs'][x]['lo']:.3f}-{a['pairs'][x]['hi']:.3f}) "
+                              f"{a['pairs'][x]['agree']}/{a['pairs'][x]['n']}" for x in prs) + " | "
+                 + " | ".join(f"{a['p90p10'][x]:.2f}" for x in arms) + " |")
     L += ["", "(Times are the median over rounds of the case's k runs. Pass 2 runs after pass 1 in the same process. "
-          "A p90/p10 well above 1.15 is a case switching between two speeds from one process to the next.)"]
+          "Each ratio is the median over rounds of the ratio in the same round, with its bootstrap interval and how "
+          "many rounds agree in sign. A p90/p10 well above 1.15 is a case switching between two speeds from one "
+          "process to the next.)"]
     return "\n".join(L) + "\n"
 
 
 def summary(files: list[Path]) -> str:
-    """One table over several jobs: a column per job (its CPU, L1D and period), a row per case and pass, each cell
-    the job's median colour/base ratio and its 95% interval. Jobs ran on different machines: read down a column,
-    never across a row."""
+    """One table over several jobs: a column per job (its CPU and L1D), a row per case, pass and pair, each cell
+    the job's median ratio and its 95% interval. Jobs ran on different machines: read down a column, never
+    across a row."""
     rs = []
     for f in files:
         try:
-            rs.append(json.loads(Path(f).read_text()))
+            r = json.loads(Path(f).read_text())
+            if "arms" in r:
+                rs.append(r)
         except (OSError, ValueError) as e:
             print(f"skipped {f}: {e}", file=sys.stderr)
     if not rs:
         return "## Colouring: no results\n"
-    rs.sort(key=lambda r: (r.get("label", ""), int(r["period"]) if str(r["period"]).isdigit() else 0))
-    cases = sorted({c for r in rs for c in r["analysis"]}, key=lambda c: (c.split("/")[1], c))
-    L = ["## Colouring across runners: colour/base per case (median over rounds, 95% interval)", "",
-         "| job | runner | CPU | L1D | period | rounds |", "|---|---|---|---|---:|---:|"]
+    rs.sort(key=lambda r: r.get("label", ""))
+    prs = []
+    for r in rs:
+        for a, b in pairs_of(r["arms"]):
+            if f"{a}/{b}" not in prs:
+                prs.append(f"{a}/{b}")
+    cases = sorted({c for r in rs for c in r["analysis"]}, key=ckey)
+    L = ["## Colouring across runners: ratios per case (median over rounds, 95% interval)", "",
+         "| job | runner | CPU | L1D | rounds |", "|---|---|---|---|---:|"]
     for i, r in enumerate(rs, 1):
-        L.append(f"| J{i} | {r.get('label', '')} | {r['cpu']} | {l1_text(r['l1d'])} | {r['period']} | {r['rounds']} |")
-    L += ["", "| case | pass | " + " | ".join(f"J{i}" for i in range(1, len(rs) + 1)) + " |",
-          "|---|---|" + "---|" * len(rs)]
+        L.append(f"| J{i} | {r.get('label', '')} | {r['cpu']} | {l1_text(r['l1d'])} | {r['rounds']} |")
+    L += ["", "| case | pass | ratio | " + " | ".join(f"J{i}" for i in range(1, len(rs) + 1)) + " |",
+          "|---|---|---|" + "---|" * len(rs)]
     for c in cases:
         n, p = c.split("/")
-        cells = []
-        for r in rs:
-            a = r["analysis"].get(c)
-            cells.append(f"{a['ratio']:.3f} ({a['lo']:.3f}-{a['hi']:.3f})" if a else "")
-        L.append(f"| {n} | {p} | " + " | ".join(cells) + " |")
-    L += ["", "(Each job compares main and the colour branch on one machine, paired in rounds. Hosted runners differ "
-          "in CPU model from job to job, so compare within a column only.)"]
+        for pr in prs:
+            cells = []
+            for r in rs:
+                a = r["analysis"].get(c, {}).get("pairs", {}).get(pr)
+                cells.append(f"{a['ratio']:.3f} ({a['lo']:.2f}-{a['hi']:.2f})" if a else "")
+            L.append(f"| {n} | {p} | {pr} | " + " | ".join(cells) + " |")
+    L += ["", "(Each job times every arm on one machine, paired in rounds. Hosted runners differ in CPU model from "
+          "job to job, so compare within a column only.)"]
     return "\n".join(L) + "\n"
 
 
 def main() -> int:
     a = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     a.add_argument("--summary", nargs="+", type=Path, help="write one table over these jobs' JSON files")
-    a.add_argument("--base", type=Path)
-    a.add_argument("--colour", type=Path)
+    a.add_argument("--arm", action="append", default=[], help="NAME=DIR, the base first")
     a.add_argument("--cases", type=Path)
-    a.add_argument("--period", default="?")
     a.add_argument("--label", default=platform.node())
     a.add_argument("--cc", default=os.environ.get("CC", "cc"))
     a.add_argument("--rounds", type=int, default=15)
@@ -204,22 +230,23 @@ def main() -> int:
     if a.summary:
         md = summary(a.summary)
     else:
-        if not (a.base and a.colour and a.cases):
-            a.error("--base, --colour and --cases are needed (or --summary)")
-        arms = {"base": a.base.resolve(), "colour": a.colour.resolve()}
+        if len(a.arm) < 2 or not a.cases:
+            a.error("at least two --arm NAME=DIR (the base first) and --cases are needed (or --summary)")
+        arms = dict((n, Path(d).resolve()) for n, d in (x.split("=", 1) for x in a.arm))
+        names = list(arms)
         cases = a.cases.resolve()
         for d in arms.values():
             run(d, cases)
         rnd = random.Random(a.seed)
         runs = []
         for rd in range(a.rounds):
-            order = list(arms)
+            order = names[:]
             rnd.shuffle(order)
             for name in order:
                 runs.append({"round": rd, "arm": name, "times": run(arms[name], cases)})
         r = {"label": a.label, "machine": platform.machine(), "system": platform.system(), "cpu": cpu_name(),
-             "l1d": l1d(), "cc": cc_version(a.cc), "period": a.period, "rounds": a.rounds,
-             "analysis": analyse(runs, a.seed), "runs": runs}
+             "l1d": l1d(), "cc": cc_version(a.cc), "arms": names, "rounds": a.rounds,
+             "analysis": analyse(runs, names, a.seed), "runs": runs}
         md = markdown(r)
         if a.json:
             Path(a.json).write_text(json.dumps(r, indent=1))

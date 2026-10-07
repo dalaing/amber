@@ -21,6 +21,8 @@ run:{[p]
  / controls: windows that do not move on M2, and the prior kernels a misaligned colour would slow
  out[p;"s_mmin100";10;{mmin[100;PX]}];out[p;"std_mmin20";10;{mmin[20;dat]}]
  out[p;"maxprior";10;{|':PX}];out[p;"minprior";10;{&':PX}]
+ / 4K aliasing (x86: a load and an earlier store whose addresses agree mod 4 KB): an output written beside its input
+ out[p;"deltas";10;{-':PX}];out[p;"deltasi";10;{-':ix}];out[p;"addone";10;{PX+1.0}]
  / allocation-bound controls: small vectors (an's class test), and vectors the parsers grow an item at a time (aa)
  out[p;"small_alloc";20;{+/{+/x+!8}'!20000}];out[p;"jsonints";10;{`j?jsi}];out[p;"parseints";10;{. lsi}]}
 run 1;run 2

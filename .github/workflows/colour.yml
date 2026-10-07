@@ -1,10 +1,11 @@
 # Fork only, not for the pull request: the colouring allocator on hosted runners, main against this branch.
 #
-# Each sweep job is one runner and one palette period. It builds the branch's base (its merge-base with
-# upstream main) and the branch once each, the branch with src/m.c's CP set to the job's period, and times
-# them paired in shuffled rounds (.github/colour-ci/colour_sweep.py). Runners differ in CPU model from job
-# to job, so each job records its CPU and L1D, and results are compared within a job only. The summary job
-# puts every job's ratios in one table, a column per job.
+# Each sweep job is one runner. It builds three: the branch's base (its merge-base with upstream main), and
+# the branch twice, with src/m.c's CP set to 4096 and to 16384, each in a checkout of its own. It times the
+# three paired in shuffled rounds (.github/colour-ci/colour_sweep.py) and reports each colour build against
+# the base and the two periods against each other. Runners differ in CPU model from job to job, so each job
+# records its CPU and L1D, and results are compared within a job only. The summary job puts every job's
+# ratios in one table, a column per job.
 name: colour
 
 on:
@@ -32,33 +33,28 @@ env:
 
 jobs:
   sweep:
-    name: ${{ matrix.os }}, period ${{ matrix.period }}, rep ${{ matrix.rep }}
+    name: ${{ matrix.os }}, rep ${{ matrix.rep }}
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-24.04        # x86-64: AMD EPYC and Intel models both turn up
-          - ubuntu-24.04-arm    # Neoverse (16 KB L1 set stride)
-          - macos-15            # Apple arm64 (M1)
-          - macos-15-intel      # Intel Mac
-        period: [4096, 16384]
-        rep: [1]
-        include:                # a second run on the x86 Linux runner, to sample another CPU model
-          - os: ubuntu-24.04
-            period: 4096
-            rep: 2
-          - os: ubuntu-24.04
-            period: 16384
-            rep: 2
+        include:
+          - {os: ubuntu-24.04, rep: 1}        # x86-64: AMD EPYC and Intel Xeon models both turn up,
+          - {os: ubuntu-24.04, rep: 2}        # so four runs to sample more of them
+          - {os: ubuntu-24.04, rep: 3}
+          - {os: ubuntu-24.04, rep: 4}
+          - {os: ubuntu-24.04-arm, rep: 1}    # Neoverse (16 KB L1 set stride)
+          - {os: ubuntu-24.04-arm, rep: 2}
+          - {os: macos-15, rep: 1}            # Apple arm64 (M1)
+          - {os: macos-15-intel, rep: 1}      # Intel Mac
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 75
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           path: colour
 
-      - name: the base (the branch's merge-base with upstream main), in a separate checkout
+      - name: the base (the branch's merge-base with upstream main) and two copies of the branch
         shell: bash
         run: |
           cd colour
@@ -67,20 +63,18 @@ jobs:
           echo "base $b, branch $(git rev-parse HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
           git worktree add -q --detach ../base "$b"
           if grep -q '^#define CP ' ../base/src/m.c; then echo "the base already colours"; exit 1; fi
-
-      - name: palette period ${{ matrix.period }} (the branch only)
-        shell: bash
-        run: |
-          cd colour
-          perl -pi -e 's/^#define CP [0-9]+/#define CP ${{ matrix.period }}/' src/m.c
-          test "$(grep -c '^#define CP ${{ matrix.period }}' src/m.c)" = 2
-          git diff --stat
+          for p in 4096 16384; do
+            git worktree add -q --detach ../c$p HEAD
+            perl -pi -e "s/^#define CP [0-9]+/#define CP $p/" ../c$p/src/m.c
+            test "$(grep -c "^#define CP $p" ../c$p/src/m.c)" = 2
+          done
+          git -C ../c4096 diff --stat
 
       - name: machine
         shell: bash
         run: |
           {
-            echo "### ${{ matrix.os }}, period ${{ matrix.period }}, rep ${{ matrix.rep }}"
+            echo "### ${{ matrix.os }}, rep ${{ matrix.rep }}"
             echo '```'
             if [ "$(uname)" = Darwin ]; then
               sysctl machdep.cpu.brand_string hw.l1dcachesize hw.cachelinesize hw.perflevel0.l1dcachesize 2>/dev/null || true
@@ -93,44 +87,45 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: build both (the default build; gcc on Linux, clang on macOS)
+      - name: build the three (the default build; gcc on Linux, clang on macOS)
         shell: bash
         run: |
-          (cd base && sh build.sh)
-          (cd colour && sh build.sh)
-          printf '%s\n' '+/!10' | ./base/amber
-          printf '%s\n' '+/!10' | ./colour/amber
+          for d in base c4096 c16384; do (cd $d && sh build.sh) && printf '%s\n' '+/!10' | ./$d/amber; done
 
-      - name: the branch's quick suites at this period
+      - name: the quick suites, each colour build
         shell: bash
-        timeout-minutes: 20
-        run: cd colour && bash tests/run_tests.sh --quick
+        timeout-minutes: 30
+        run: |
+          for d in c4096 c16384; do (cd $d && bash tests/run_tests.sh --quick); done
 
-      - name: same answers (the case file prints timings, so check windows, a group and a prior directly)
+      - name: same answers (the case file prints timings, so check windows, a group, priors and maps directly)
         shell: bash
         timeout-minutes: 5
         run: |
           e='\l amber.k
           \l std.k
           N:1000000;PX:0.001*100000!2654435761*!N;sy:`$"s",'"'"'$100!1000003!6364136223846793005*!N;g:group sy
-          {`0:$x}'"'"'(+/msum[100;PX];+/mavg[100;PX];+/mdev[100;PX];+/mmin[100;PX];#g;+/(value g)[;7];+/|'"'"':PX);'
+          {`0:$x}'"'"'(+/msum[100;PX];+/mavg[100;PX];+/mdev[100;PX];+/mmin[100;PX];#g;+/(value g)[;7];+/|'"'"':PX;+/-'"'"':PX;+/PX+1.0);'
           a=$(cd base && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber)
-          b=$(cd colour && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber)
-          echo "$a"; test -n "$a" && test "$a" = "$b"
+          echo "$a"; test -n "$a"
+          for d in c4096 c16384; do
+            b=$(cd $d && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber)
+            test "$a" = "$b" || { echo "$d differs:"; echo "$b"; exit 1; }
+          done
 
       - name: paired rounds
         shell: bash
-        timeout-minutes: 50
+        timeout-minutes: 90
         run: |
-          python3 colour/.github/colour-ci/colour_sweep.py --base base --colour colour \
-            --cases colour/.github/colour-ci/colour_cases.k --period ${{ matrix.period }} --cc cc \
+          python3 colour/.github/colour-ci/colour_sweep.py --arm base=base --arm c4096=c4096 --arm c16384=c16384 \
+            --cases colour/.github/colour-ci/colour_cases.k --cc cc \
             --label "${{ matrix.os }} rep ${{ matrix.rep }}" --rounds "$ROUNDS" \
-            --json sweep-${{ matrix.os }}-${{ matrix.period }}-${{ matrix.rep }}.json
+            --json sweep-${{ matrix.os }}-${{ matrix.rep }}.json
 
       - uses: actions/upload-artifact@v4
         with:
-          name: colour-${{ matrix.os }}-${{ matrix.period }}-${{ matrix.rep }}
-          path: sweep-${{ matrix.os }}-${{ matrix.period }}-${{ matrix.rep }}.json
+          name: colour-${{ matrix.os }}-${{ matrix.rep }}
+          path: sweep-${{ matrix.os }}-${{ matrix.rep }}.json
 
   summary:
     name: summary
