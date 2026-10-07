@@ -170,15 +170,32 @@ A mf(U f,U i,U n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,
 // as the old global array. Only a free-list miss (mb -> mm) or an oversized
 // free (m0 -> mu) reaches the reg[] lock.
 Z AM_TLS_IE A bkt[24];DBG(Z U lck;)
-Z W cap(A x/*0*/)_((HD<<xb)-HD)
+// Colour. A block is aligned to its size (HD<<b), so every payload of 64 KB or more sat 64 bytes past a
+// multiple of the L1 set stride, and big vectors used together (a window's input and output, a group-by's
+// columns) fought over the same L1 sets. an() moves such a payload, with its header, c lines into its
+// block's spare room (no change of class): a thread's n-th large block gets c=n*199 mod CP/64, cut down to
+// the room left. c is whole 64-byte lines, so payloads stay 64-byte aligned (amber item 8). c is kept in a
+// spare header byte, at the payload and at the block's start (for the heap walk, OBS), and m0() moves the
+// header back, so the free lists and mb()'s splitting only see uncoloured blocks. Mapped files (b 0) and
+// blocks past the classes are never coloured.
+#if defined(__APPLE__)&&defined(__aarch64__)
+#define CP 16384//colour period: the L1 set stride (Apple M-series: 128 KB, 8-way)
+#else
+#define CP 4096 //x86: 32-48 KB, 8-12-way (untested)
+#endif
+#define CB 10   //smallest coloured class (64 KB blocks)
+#define _cl(x) (*(UC*)((x)-31))//colour, in 64-byte lines
+Z AM_TLS_IE U acn;//large blocks so far (this thread)
+Z W cap(A x/*0*/)_((HD<<xb)-HD-((W)_cl(x)<<6))
 Z A mb(U i){I(i>=L(bkt),V*p=mm(HD<<i,0);P(!p,die("OOM"))return AP(p+HD);)A x=bkt[i];I(x,bkt[i]=xX;DBG(xX=0;)return x;)x=mb(i+1);A y=x+(HD<<i);MS(yV-HD,0,HD);yb=i;yX=bkt[i];bkt[i]=y;return x;}
+NI Z A aunc(A x)_(A y=x-((W)_cl(x)<<6);MC((V*)(y-32),(V*)(x-32),32);_cl(y)=0;y)//m0: a coloured block's header back to its start
 // release one reference (r0). The decrement is atomic in a peach scope (RC_DECV)
 // and plain otherwise; only the LAST owner (previous count == REFB) frees. The
 // bkt[] push is thread-local and lock-free; only the oversized/file-backed
 // paths (mu) touch the shared region table under its lock.
 A m0(A x){DBG(lck++;)Q(x)XP(0)I(RC_DECV(x)>REFB,return 0;)
  I(TR(xT),mrn(xn|!xn,xA);xT=tL)U i=xb;
- I(!i,return mu(xV-pg);)I(i>=L(bkt),return mu(xV-HD);)
+ I(!i,return mu(xV-pg);)I(__builtin_expect(i>=CB,0),I(i>=L(bkt),return mu(xV-HD);)I(_cl(x),x=aunc(x)))
  xX=bkt[i];bkt[i]=x;xr=0;return x;}
 DBG(A1(m1,lck--;P(!x||!xb,0)MS(xV,0xab,cap(x));xn=-1;xT=0;0))
 A1(_R,Q(x)XP(x)RC_INC(x);x)
@@ -187,11 +204,16 @@ V mRn(U n,CO A*a){F(n,_R(a[i]))}
 V mrn(U n,CO A*a){F(n,mr(a[i]))}
 A1(mRa,mRn(xn,xA);x)
 
-NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))U i=58-CLZ(HD|HD-1+(((W)n<<Tw[t])+7>>3));A x=mb(i);xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;x)
+NI Z A anc(A x,U i,U n,C t){I(i<L(bkt),W r=((HD<<i)-HD-(((W)n<<Tw[t])+7>>3))>>6,c=acn++*199u%(CP>>6);I(c>r,c%=r+1)
+ I(c,_b(x)=i;_cl(x)=c;x+=c<<6;MS((V*)(x-HD),0,HD);_cl(x)=c))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;return x;}//an's large blocks, coloured
+NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))U i=58-CLZ(HD|HD-1+(((W)n<<Tw[t])+7>>3));A x=mb(i);P(__builtin_expect(i>=CB,0),anc(x,i,n,t))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;x)
 A aV(C t,U n,CO V*v)_(A x=an(n,t);MC(xV,v,((W)n<<Tw[t])+7>>3);x)
 // realloc. Grown in place for its sole owner, who then writes the new tail --
 // so no attribute survives it (amber 2.3: `s,:v kept `s on unsorted data).
-A aa(U n,A x/*1*/)_(P(MINE(x)&&((W)n<<xw)+7>>3<=cap(x),_at(x)=0;AN(n,x))A y=an(n,xt);MC(yV,xV,((W)xn<<Tw[xt])+7>>3);I(ytR,I(MINE(x),AZ(x))E(mRn(xn,xA)))x(y))
+// A colour takes room from cap(), so a coloured vector grown an item at a time would be copied again
+// within its class: while it would still fit its block uncoloured, its owner moves it up a class (aag).
+NI Z A aag(U n,A x){W f=(HD<<xb)-HD,m=(f<<3>>xw)+1;return AN(n,an(((W)n<<xw)+7>>3>f||m>>32?n:(U)m,xt));}
+A aa(U n,A x/*1*/)_(P(MINE(x)&&((W)n<<xw)+7>>3<=cap(x),_at(x)=0;AN(n,x))A y=_cl(x)&&MINE(x)?aag(n,x):an(n,xt);MC(yV,xV,((W)xn<<Tw[xt])+7>>3);I(ytR,I(MINE(x),AZ(x))E(mRn(xn,xA)))x(y))
 A aA0(U n)_(A x=AN(0,aA(n));xx=emp(tC);x)
 A1(aA1,aV(tA,1,&x))
 A2(aA2,/*11*/aV(tA,2,A(x,y)))
@@ -559,7 +581,7 @@ ZN A1(ox,o8(x);osd(" b",xb);C t=xT;os(" t");I(LH(1,t,tn),ow(&TS[t],1))E(od(t))os
 // additive -- every existing caller indexes 0..4 and is unaffected.
 A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr),aCz(AMARCH),aCz(AMCC),aCz(AMBER_VERSION),aCz(am_ext_banner?am_ext_banner:""),al((L)am_ln_term_cols()),al((L)am_ln_term_rows())};x(aV(tA,8,a)))
 #define RGS(a...) F(nreg,B f=reg[i].f;V*p=reg[i].p,*q=f?p:p+reg[i].n;a)
-#define OBS(a...) RGS(A x=(A)(p+HD*!f+pg*f),y=(A)q;W(x<y,a;x+=HD<<xb))
+#define OBS(a...) RGS(A z=(A)(p+HD*!f+pg*f),y=(A)q;W(z<y,A x=z+((W)_cl(z)<<6);a;z+=HD<<_b(z)))
 #define XYS(a...) OBS(I(xtR,F(xn|!xn,A y=xa;a)))
 #define RTS(a...) {A x=cns;a;F(gn,I(x=gv[i],a))}
 A bsm(S s)_(XYS(I(!ytP,yr--))RTS(I(!xtP,xr--))OBS(I(xr,os("!refc:");ox(x)))RTS(I(!xtP,xr++))XYS(I(!ytP,yr++))
