@@ -186,6 +186,7 @@ Z AM_TLS_IE A bkt[24];DBG(Z U lck;)
 #define CB 10   //smallest coloured class (64 KB blocks)
 #define _cl(x) (*(UC*)((x)-31))//colour, in 64-byte lines
 Z AM_TLS_IE U acn;//large blocks so far (this thread)
+V acs(U i){acn=i;}//a peach worker starts its colours at its index, so workers do not hand out one sequence in step
 Z W cap(A x/*0*/)_((HD<<xb)-HD-((W)_cl(x)<<6))
 Z A mb(U i){I(i>=L(bkt),V*p=mm(HD<<i,0);P(!p,die("OOM"))return AP(p+HD);)A x=bkt[i];I(x,bkt[i]=xX;DBG(xX=0;)return x;)x=mb(i+1);A y=x+(HD<<i);MS(yV-HD,0,HD);yb=i;yX=bkt[i];bkt[i]=y;return x;}
 NI Z A aunc(A x)_(A y=x-((W)_cl(x)<<6);MC((V*)(y-32),(V*)(x-32),32);_cl(y)=0;y)//m0: a coloured block's header back to its start
@@ -210,10 +211,11 @@ NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))U i=58-CLZ(HD|HD-1+(((W)n<<Tw[t
 A aV(C t,U n,CO V*v)_(A x=an(n,t);MC(xV,v,((W)n<<Tw[t])+7>>3);x)
 // realloc. Grown in place for its sole owner, who then writes the new tail --
 // so no attribute survives it (amber 2.3: `s,:v kept `s on unsorted data).
+// Only a large block can carry a colour, so a small one's in-place test reads its class, not the colour.
 // A colour takes room from cap(), so a coloured vector grown an item at a time would be copied again
 // within its class: while it would still fit its block uncoloured, its owner moves it up a class (aag).
 NI Z A aag(U n,A x){W f=(HD<<xb)-HD,m=(f<<3>>xw)+1;return AN(n,an(((W)n<<xw)+7>>3>f||m>>32?n:(U)m,xt));}
-A aa(U n,A x/*1*/)_(P(MINE(x)&&((W)n<<xw)+7>>3<=cap(x),_at(x)=0;AN(n,x))A y=_cl(x)&&MINE(x)?aag(n,x):an(n,xt);MC(yV,xV,((W)xn<<Tw[xt])+7>>3);I(ytR,I(MINE(x),AZ(x))E(mRn(xn,xA)))x(y))
+A aa(U n,A x/*1*/)_(W m=((W)n<<xw)+7>>3;P(MINE(x)&&m<=(HD<<xb)-HD&&(__builtin_expect(xb<CB,1)||m<=cap(x)),_at(x)=0;AN(n,x))A y=_cl(x)&&MINE(x)?aag(n,x):an(n,xt);MC(yV,xV,((W)xn<<Tw[xt])+7>>3);I(ytR,I(MINE(x),AZ(x))E(mRn(xn,xA)))x(y))
 A aA0(U n)_(A x=AN(0,aA(n));xx=emp(tC);x)
 A1(aA1,aV(tA,1,&x))
 A2(aA2,/*11*/aV(tA,2,A(x,y)))
