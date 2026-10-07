@@ -8,7 +8,8 @@
  * byte at -31; its block (HD<<b bytes) starts HD plus the colour before it.
  *
  *   1. large payloads are 64-byte aligned, and their colours vary mod 4 KB
- *      (the smaller period, so the check holds for either value of CP);
+ *      (the smaller period, so the check holds for either value of CP); a
+ *      coloured payload leaves at least 32 bytes after it in its block;
  *   2. a freed coloured block goes back on its free list uncoloured (mr returns
  *      the block's own payload address), and the next allocation of that class
  *      takes the same block with the next colour;
@@ -45,6 +46,17 @@ int main(void) {
         }
         CHECK(distinct >= K / 2, "only %d distinct offsets mod 4 KB among %d large payloads", distinct, K);
         for (int i = 0; i < K; i++) mr(v[i]);
+    }
+    /* 1b. a coloured payload leaves 32 bytes after it in its block (the gathers write up to 31 past n) */
+    {
+        int short_ = 0, coloured = 0;
+        for (int k = 0; k < 64; k++) {
+            U n = (U)((262144 - 64) / 8) - (U)k;              /* longs that (nearly) fill a class-12 block */
+            A x = an(n, tL);
+            if (col(x)) { coloured++; short_ += blk(x) + (HD << _b(x)) - (x + ((W)n << 3)) < 32; }
+            mr(x);
+        }
+        CHECK(!short_, "%d of %d coloured payloads left under 32 bytes after them", short_, coloured);
     }
     /* 2. free and reuse */
     {
