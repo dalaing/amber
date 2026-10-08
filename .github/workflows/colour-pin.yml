@@ -1,0 +1,83 @@
+# Fork only, not for the pull request: is the colour builds' cost on some x86 cores code placement?
+# Each job times four builds in the same shuffled rounds: main and the branch (CP 4096) with the default gcc
+# build, and main and the branch with clang, every function 64-byte aligned and the hot functions in a fixed
+# order first (lld's --symbol-ordering-file; src/m.c's allocator functions last), so the kernels sit at the same
+# addresses in both pinned builds (pincheck.py checks it).
+name: colour-pin
+
+on:
+  push:
+    branches: [colour-allocator]
+    paths: [".github/colour-ci/pin/**", ".github/workflows/colour-pin.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: colour-pin-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    name: ${{ matrix.os }}, rep ${{ matrix.rep }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, rep: 1}
+          - {os: ubuntu-24.04, rep: 2}
+          - {os: ubuntu-24.04, rep: 3}
+          - {os: ubuntu-24.04, rep: 4}
+          - {os: ubuntu-24.04, rep: 5}
+          - {os: ubuntu-24.04, rep: 6}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: colour
+
+      - name: four trees
+        shell: bash
+        run: |
+          cd colour
+          git fetch -q https://github.com/BonucciAndrea/amber main
+          b=$(git merge-base HEAD FETCH_HEAD)
+          git worktree add -q --detach ../base "$b"
+          git worktree add -q --detach ../pbase "$b"
+          git worktree add -q --detach ../c4096 HEAD
+          git worktree add -q --detach ../pc4096 HEAD
+          for d in c4096 pc4096; do perl -pi -e 's/^#define CP [0-9]+/#define CP 4096/' ../$d/src/m.c; done
+          sudo apt-get install -y -qq lld >/dev/null
+          lscpu | grep -E 'Model name|L1d' | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: build the four
+        shell: bash
+        run: |
+          for d in base c4096; do (cd $d && sh build.sh >/dev/null) && printf '%s\n' '+/!10' | ./$d/amber; done
+          for d in pbase pc4096; do sh colour/.github/colour-ci/pin/pinbuild.sh $d colour/.github/colour-ci/pin/pin.order; done
+          python3 colour/.github/colour-ci/pin/pincheck.py colour/.github/colour-ci/pin/pin.order pbase/amber pc4096/amber
+
+      - name: same answers
+        shell: bash
+        run: |
+          e='\l amber.k
+          \l std.k
+          N:1000000;PX:0.001*100000!2654435761*!N;{`0:$x}'"'"'(+/msum[100;PX];+/mmin[100;PX];+/|'"'"':PX;+/-'"'"':PX);'
+          a=$(cd base && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber); echo "$a"; test -n "$a"
+          for d in c4096 pbase pc4096; do test "$a" = "$(cd $d && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber)"; done
+
+      - name: paired rounds
+        shell: bash
+        timeout-minutes: 90
+        run: |
+          python3 colour/.github/colour-ci/colour_sweep.py --arm base=base --arm c4096=c4096 --arm pbase=pbase \
+            --arm pc4096=pc4096 --cases colour/.github/colour-ci/colour_cases.k --cc cc \
+            --label "${{ matrix.os }} rep ${{ matrix.rep }}" --rounds 15 --json pin-${{ matrix.rep }}.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pin-${{ matrix.rep }}
+          path: pin-${{ matrix.rep }}.json
