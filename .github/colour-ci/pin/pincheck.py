@@ -26,6 +26,12 @@ def main():
     hot = names[:names.index("an")] if "an" in names else names
     S = [syms(b) for b in a.bins]
     same, diff, missing, dup = [], [], [], []
+    # Compare offsets from the first ordered function, so a uniform shift of the whole ordered block (lld puts a
+    # few unordered sections first, of a size that differs between the builds) does not count: every function
+    # then keeps its offset mod any power of two up to the shift's alignment.
+    first = next((n for n in hot if all(n in s for s in S)), None)
+    org = [s[first][0] for s in S] if first else [0] * len(S)
+    S = [{n: [x - o for x in v] for n, v in s.items()} for s, o in zip(S, org)]
     for n in hot:
         addrs = [s.get(n) for s in S]
         if any(x is None for x in addrs):
@@ -33,7 +39,7 @@ def main():
         if any(len(x) > 1 for x in addrs):
             dup.append(n)
         (same if len({x[0] for x in addrs}) == 1 else diff).append((n, [x[0] for x in addrs]))
-    L = [f"### Pinned layout: {len(same)} of {len(hot)} ordered functions at one address in all {len(S)} builds", ""]
+    L = [f"### Pinned layout: {len(same)} of {len(hot)} ordered functions at one offset from `{first}` in all {len(S)} builds (block starts: " + ", ".join(hex(o) for o in org) + ")", ""]
     if diff:
         L += ["| function | " + " | ".join(os.path.basename(os.path.dirname(os.path.abspath(b))) or b for b in a.bins) + " |",
               "|---|" + "---|" * len(S)]
