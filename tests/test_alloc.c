@@ -16,11 +16,11 @@
  *   3. small blocks are never coloured;
  *   4. a vector grown an item at a time from class 10 to class 13 keeps its
  *      contents, never writes past its block, and is copied about once a class
- *      (the growth rule), and the same vector shrunk and grown again by large
+ *      (its copies are uncoloured), and the same vector shrunk and grown again by large
  *      steps keeps them too.
  *
  * Checks 1 and 2 fail on a build that does not colour; 3 and 4 pass there too
- * (4 checks the growth rule, which keeps the copies to one a class as without colours). */
+ * (4 checks that growth copies about once a class, as without colours). */
 #include "a.h"
 #include <stdio.h>
 
