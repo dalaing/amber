@@ -8,7 +8,9 @@
 # only the changed code moves. The branch carries .github/colour-ci/nocol.patch (CI only): AMBER_COLOUR=0 turns
 # its colours off, so one binary gives the branch's code with main's data placement (pcol-off) and with its own
 # (pcol). pcol-off/pbase is then the code's cost, pcol/pcol-off the placement's. The default gcc builds
-# of both (base, col: the PR's code as it is) are timed in the same rounds. Compare within a job only.
+# of both (base, col: the PR's code as it is) are timed in the same rounds, and a gcc build of the branch with
+# nocol.patch, on and off (gcol, gcol-off: gcc's code with and without the colours, at one layout). Compare
+# within a job only.
 name: colour-probe
 
 on:
@@ -109,14 +111,14 @@ jobs:
           b=$(git merge-base HEAD FETCH_HEAD)
           echo "base $b, branch $(git rev-parse HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
           for d in base pbase; do git worktree add -q --detach ../$d "$b"; done
-          for d in col pcol; do git worktree add -q --detach ../$d HEAD; done
-          (cd ../pcol && patch -p1 < "$GITHUB_WORKSPACE/$CI/nocol.patch")
+          for d in col pcol gcol; do git worktree add -q --detach ../$d HEAD; done
+          for d in pcol gcol; do (cd ../$d && patch -p1 < "$GITHUB_WORKSPACE/$CI/nocol.patch"); done
           sudo apt-get install -y -qq lld clang >/dev/null
           lscpu | grep -E 'Model name|L1d' | tee -a "$GITHUB_STEP_SUMMARY"
       - name: build (gcc default builds; pinned clang builds, ordered from a first unordered pair)
         shell: bash
         run: |
-          for d in base col; do (cd $d && sh build.sh >/dev/null) && printf '%s\n' '+/!10' | ./$d/amber; done
+          for d in base col gcol; do (cd $d && sh build.sh >/dev/null) && printf '%s\n' '+/!10' | ./$d/amber; done
           for d in pbase pcol; do sh $CI/pin/pinbuild.sh $d /dev/null >/dev/null; done
           python3 $CI/pin/pinorder.py full.order same.order pbase/amber pcol/amber | tee -a "$GITHUB_STEP_SUMMARY"
           for d in pbase pcol; do sh $CI/pin/pinbuild.sh $d full.order; done
@@ -129,13 +131,13 @@ jobs:
           N:1000000;PX:0.001*100000!2654435761*!N;{`0:$x}'"'"'(+/msum[100;PX];+/mmin[100;PX];+/|'"'"':PX;+/-'"'"':PX;#`j?"[",(","/$!100000),"]");'
           a=$(cd base && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber); echo "$a"; test -n "$a"
           for d in col pbase pcol; do test "$a" = "$(cd $d && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber)"; done
-          test "$a" = "$(cd pcol && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 AMBER_COLOUR=0 ./amber)"
+          for d in pcol gcol; do test "$a" = "$(cd $d && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 AMBER_COLOUR=0 ./amber)"; done
       - name: paired rounds
         shell: bash
         timeout-minutes: 100
         run: |
           python3 $CI/colour_sweep.py --arm pbase=pbase --arm pcol=pcol --arm pcol-off=pcol:AMBER_COLOUR=0 \
-            --arm base=base --arm col=col --cases $CI/colour_cases.k --cc cc \
+            --arm base=base --arm col=col --arm gcol=gcol --arm gcol-off=gcol:AMBER_COLOUR=0 --cases $CI/colour_cases.k --cc cc \
             --label "${{ matrix.os }} rep ${{ matrix.rep }}" --rounds "$ROUNDS" \
             --json probe-${{ matrix.os }}-${{ matrix.rep }}.json
       - uses: actions/upload-artifact@v4
