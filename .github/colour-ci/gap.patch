@@ -1,21 +1,23 @@
+diff --git a/src/m.c b/src/m.c
+index 96ba6dbb9..fe29e3f34 100644
 --- a/src/m.c
 +++ b/src/m.c
-@@ -206,8 +206,16 @@
- V mrn(U n,CO A*a){F(n,mr(a[i]))}
+@@ -215,8 +215,16 @@ V mrn(U n,CO A*a){F(n,mr(a[i]))}
  A1(mRa,mRn(xn,xA);x)
  
--NI Z A anc(A x,U i,U n,C t){I(i<L(bkt),W r=(HD<<i)-HD-(((W)n<<Tw[t])+7>>3),c=acn++*199u%(CP>>6);r=r>32?r-32>>6:0;I(c>r,c%=r+1)
-- I(c,_b(x)=i;_cl(x)=c;x+=c<<6;MS((V*)(x-HD),0,HD);_cl(x)=c))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;return x;}//an's large blocks, coloured
+ Z A mbs(U i){A x=bkt[i];I(x,bkt[i]=xX;DBG(xX=0;)return x;)return mb(i);}//mb() below class CB: its free list, else mb() splits
+-NI Z A anc(U i,W nb,U n,C t){A x=mb(i);I(i<L(bkt),W r=(HD<<i)-HD-nb,c=acn++*199u%((CP>>6)/CU);r=r>32?(r-32>>6)/CU:0;I(c>r,c%=r+1)c*=CU;
+- I(c,_b(x)=i;_cl(x)=c;x+=c<<6;MS((V*)(x-HD),0,HD);_cl(x)=c;i--))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;return x;}//an's large blocks, coloured
 +// CI only (.github/colour-ci/gap.patch, never in src): AMBER_COLOUR_STEP=s gives a thread's n-th large block the
-+// colour n*s mod CP/64, so blocks allocated one after the other sit s lines apart; AMBER_COLOUR_LOG=1 logs each
-+// large block (n, class, colour, bytes, payload mod 4096) to stderr. Read once, so single-threaded runs only.
++// colour n*s mod CP/64 (in lines, without CU), so blocks allocated one after the other sit s lines apart;
++// AMBER_COLOUR_LOG=1 logs each large block (n, class, colour, bytes, payload mod 4096) to stderr. Read once:
++// single-threaded runs only.
 +#include<stdio.h>
-+#include<stdlib.h>
 +Z int gst=-2,glg;
 +Z W gcol(U n){I(gst==-2,C*e=getenv("AMBER_COLOUR_STEP");gst=e?atoi(e):-1;glg=!!getenv("AMBER_COLOUR_LOG"))return(gst<0?n*199u:n*(U)gst)%(CP>>6);}
-+NI Z A anc(A x,U i,U n,C t){U k=acn;W c=0,nb=((W)n<<Tw[t])+7>>3;I(i<L(bkt),W r=(HD<<i)-HD-nb;c=gcol(acn++);r=r>32?r-32>>6:0;I(c>r,c%=r+1)
-+ I(c,_b(x)=i;_cl(x)=c;x+=c<<6;MS((V*)(x-HD),0,HD);_cl(x)=c))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;
-+ I(glg,fprintf(stderr,"COL n=%u b=%u c=%llu nb=%llu p=%llu\n",k,i,(unsigned long long)c,(unsigned long long)nb,(unsigned long long)(x&4095)))return x;}//an's large blocks, coloured
- NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))U i=58-CLZ(HD|HD-1+(((W)n<<Tw[t])+7>>3));A x=mb(i);P(__builtin_expect(i>=CB,0),anc(x,i,n,t))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;x)
++NI Z A anc(U i,W nb,U n,C t){U k=acn;A x=mb(i);W c=0;I(i<L(bkt),W r=(HD<<i)-HD-nb;c=gcol(acn++);r=r>32?r-32>>6:0;I(c>r,c%=r+1)
++ I(c,_b(x)=i;_cl(x)=c;x+=c<<6;MS((V*)(x-HD),0,HD);_cl(x)=c;i--))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;
++ I(glg,fprintf(stderr,"COL n=%u b=%u c=%llu nb=%llu p=%llu\n",k,i+!!c,(unsigned long long)c,(unsigned long long)nb,(unsigned long long)(x&4095)))return x;}//an's large blocks, coloured
+ NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))W nb=((W)n<<Tw[t])+7>>3;U i=58-CLZ(HD|HD-1+nb);P(__builtin_expect(i>=CB,0),anc(i,nb,n,t))A x=mbs(i);xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;x)
  A aV(C t,U n,CO V*v)_(A x=an(n,t);MC(xV,v,((W)n<<Tw[t])+7>>3);x)
  // realloc. Grown in place for its sole owner, who then writes the new tail --
