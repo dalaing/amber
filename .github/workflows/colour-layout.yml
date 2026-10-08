@@ -1,0 +1,82 @@
+# Fork only, not for the pull request: how much do the default gcc builds move with code layout alone?
+#
+# Each job builds main (the branch's merge-base with upstream main) and the branch with build.sh (gcc), and
+# each again with an unused function of 16, 32 or 48 bytes put into src/m.c (the code and the data placement
+# unchanged; only the addresses after it move). If main+pad differs from main by as much as the branch does on a
+# case, that case's stock-gcc ratio is layout, not the branch. Compare within a job only.
+name: colour-layout
+
+on:
+  push:
+    branches: [colour-allocator]
+    paths: [".github/workflows/colour-layout.yml"]
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: "paired rounds per job"
+        default: "12"
+
+concurrency:
+  group: colour-layout-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  ROUNDS: ${{ inputs.rounds || '12' }}
+  UPSTREAM: https://github.com/BonucciAndrea/amber
+  CI: colour/.github/colour-ci
+
+jobs:
+  time:
+    name: ${{ matrix.os }}, rep ${{ matrix.rep }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, rep: 1}        # x86-64: Zen 3 (EPYC 7763) is the CPU that moved
+          - {os: ubuntu-24.04, rep: 2}
+          - {os: ubuntu-24.04, rep: 3}
+          - {os: ubuntu-24.04, rep: 4}
+          - {os: ubuntu-24.04, rep: 5}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: colour
+      - name: trees (a pad of p bytes in src/m.c for base-p and col-p)
+        shell: bash
+        run: |
+          cd colour
+          git fetch -q "$UPSTREAM" main
+          b=$(git merge-base HEAD FETCH_HEAD)
+          echo "base $b, branch $(git rev-parse HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
+          for p in 0 16 32 48; do
+            git worktree add -q --detach ../base-$p "$b"; git worktree add -q --detach ../col-$p HEAD
+            [ $p = 0 ] && continue
+            for d in base-$p col-$p; do
+              perl -pi -e 's/^(Z AM_TLS_IE A bkt\[24\];DBG\(Z U lck;\))$/$1\n__attribute__((used,noinline)) void amber_layout_pad(void){__asm__ volatile(".skip '$p',0x90");}/' ../$d/src/m.c
+              test "$(grep -c amber_layout_pad ../$d/src/m.c)" = 1
+            done
+          done
+          lscpu | grep -E 'Model name|L1d' | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: build the eight (build.sh, gcc)
+        shell: bash
+        run: |
+          for p in 0 16 32 48; do for d in base-$p col-$p; do (cd $d && sh build.sh >/dev/null) && printf '%s\n' '+/!10' | ./$d/amber; done; done
+          for p in 16 32 48; do nm base-$p/amber | grep -q amber_layout_pad; done
+      - name: paired rounds
+        shell: bash
+        timeout-minutes: 100
+        run: |
+          python3 $CI/colour_sweep.py --arm base=base-0 --arm base16=base-16 --arm base32=base-32 --arm base48=base-48 \
+            --arm col=col-0 --arm col16=col-16 --arm col32=col-32 --arm col48=col-48 \
+            --cases $CI/colour_cases.k --cc cc --label "${{ matrix.os }} rep ${{ matrix.rep }}" --rounds "$ROUNDS" \
+            --json layout-${{ matrix.rep }}.json > /dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: layout-${{ matrix.rep }}
+          path: layout-${{ matrix.rep }}.json
