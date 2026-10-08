@@ -1,4 +1,4 @@
-# Fork only, not for the pull request: is the colour builds' cost on some x86 cores code placement?
+# Fork only, not for the pull request (rerun on each allocator change): is the colour builds' cost on some x86 cores code placement?
 # Each job times four builds in the same shuffled rounds: main and the branch (CP 4096) with the default gcc
 # build, and main and the branch with clang, every function 64-byte aligned and the hot functions in a fixed
 # order first (lld's --symbol-ordering-file; src/m.c's allocator functions last), so the kernels sit at the same
