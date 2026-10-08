@@ -170,31 +170,34 @@ A mf(U f,U i,U n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,
 // as the old global array. Only a free-list miss (mb -> mm) or an oversized
 // free (m0 -> mu) reaches the reg[] lock.
 Z AM_TLS_IE A bkt[24];DBG(Z U lck;)
-// Colour. A block is aligned to its size (HD<<b), so every payload of 64 KB or more sat 64 bytes past a
-// multiple of the L1 set stride, and big vectors used together (a window's input and output, a group-by's
-// columns) fought over the same L1 sets. an() moves such a payload, with its header, c lines into its
-// block's spare room (no change of class): a thread's n-th large block gets c=CU*(n*199 mod CP/64/CU), cut
-// down to the room left but 32 bytes (the gathers iC..o8 write up to 31 bytes past n, which then stay in the block).
-// CU: on x86 a loop that reads one vector and writes another slows by 4-38% when the two sit one or two lines
-// apart mod 4 KB (4K aliasing: Zen 3 when the output is one line before, Intel when it is one or two after); colours
-// in steps of 3 lines keep every two large blocks at least 3 lines apart there. Apple's 16 KB keeps steps of 1.
-// c is whole 64-byte lines, so payloads stay 64-byte aligned (amber item 8). c is kept in a
-// spare header byte, at the payload and at the block's start (for the heap walk, OBS), and m0() moves the
-// header back, so the free lists and mb()'s splitting only see uncoloured blocks. Mapped files (b 0) and
-// blocks past the classes are never coloured. A coloured payload's own header gives its class as one less
-// (the block's start keeps the true one): half the block is always less than the room after it, so cap() and
-// aa()'s in-place test stay what they were, and only m0() looks for a colour, from class CB-1 up.
-#if defined(__APPLE__)&&defined(__aarch64__)
-#define CP 16384//colour period: the L1 set stride (Apple M-series: 128 KB, 8-way)
-#define CU 1
+// Colour. A block is aligned to its size (HD<<b) within a page-aligned region, so every block of 64 KB or more
+// put its payload 64 bytes past a multiple of the page, and of the L1 set stride; big vectors used together (a
+// window's input and output, a group-by's columns) fought over the same L1 sets. anc() moves such a payload, with
+// its header, c whole 64-byte lines into its block's spare room (no change of class): a thread's n-th large block
+// gets c=CU*(n*199 mod CP/64/CU), cut down to leave 32 bytes after the payload (writers that work in 32-byte
+// groups, the gathers iC..o8 among them, write up to 31 bytes past n). Whole lines keep payloads 64-byte aligned
+// (amber item 8).
+// c is kept in a spare header byte (_cl), at the payload and at the block's start, where the heap walk (OBS) finds
+// it. The payload's own header gives its class as one less: half the block is always less than the room after
+// the payload, so cap() and aa()'s in-place test are unchanged. The block's start keeps the true class, and m0()
+// moves the header back there (aunc), so the free lists and mb()'s splitting only see uncoloured blocks. Small
+// blocks keep their path: below CB, an() takes a block from its free list itself (mbs), and m0() sends class CB-1
+// and up out of line (m0c). Mapped files (b 0) and blocks past the classes are never coloured.
+// CP, the period, is the L1 set stride. CU, the step: on x86 a loop that reads one vector and writes another slows
+// by 4-48% when the two sit one or two lines apart mod 4 KB (4K aliasing: Zen 3 when the output is one line
+// before, Intel when it is one or two after); steps of 3 lines keep any two differently coloured large blocks at
+// least 3 lines apart there.
+#if defined(__aarch64__)
+#define CP 16384//Apple M-series 128 KB 8-way; Neoverse N1/N2/V1 and Cortex-A76 64 KB 4-way; Cortex-A72 32 KB 2-way
+#define CU 1    //256 colours
 #else
-#define CP 4096 //x86 (32-48 KB, 8-12-way: 4 KB), and Linux on arm64 (Neoverse N2 measured: no gap there costs)
-#define CU 3    //colour step, in lines: 21 colours, 0 to 60 lines
+#define CP 4096 //x86: 32-48 KB, 8-12-way
+#define CU 3    //21 colours, 0 to 60 lines
 #endif
+_Static_assert(CP/64<=256,"a colour is one byte, in lines");
 #define CB 10   //smallest coloured class (64 KB blocks)
-#define _cl(x) (*(UC*)((x)-31))//colour, in 64-byte lines
 Z AM_TLS_IE U acn;//large blocks so far (this thread)
-V acs(U i){acn=i;}//a peach worker starts its colours at its index, so workers do not hand out one sequence in step
+V acs(U i){acn=i;}//a peach worker starts its colours at its number (1 up; the main thread at 0), so workers do not hand out one sequence in step
 Z W cap(A x/*0*/)_((HD<<xb)-HD)
 Z A mb(U i){I(i>=L(bkt),V*p=mm(HD<<i,0);P(!p,die("OOM"))return AP(p+HD);)A x=bkt[i];I(x,bkt[i]=xX;DBG(xX=0;)return x;)x=mb(i+1);A y=x+(HD<<i);MS(yV-HD,0,HD);yb=i;yX=bkt[i];bkt[i]=y;return x;}
 NI Z A aunc(A x)_(A y=x-((W)_cl(x)<<6);MC((V*)(y-32),(V*)(x-32),32);_cl(y)=0;_b(y)++;y)//m0: a coloured block's header back to its start, with its true class
@@ -221,8 +224,8 @@ NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))W nb=((W)n<<Tw[t])+7>>3;U i=58-
 A aV(C t,U n,CO V*v)_(A x=an(n,t);MC(xV,v,((W)n<<Tw[t])+7>>3);x)
 // realloc. Grown in place for its sole owner, who then writes the new tail --
 // so no attribute survives it (amber 2.3: `s,:v kept `s on unsorted data).
-// A copy to a bigger block is not coloured (an0): a vector grown an item at a time is being built, not yet
-// streamed, and colouring each copy cost the appends (JSON and parsed lists) more than it gave.
+// A copy to a bigger block is not coloured (an0): a coloured payload's header gives half its block, so a vector
+// grown an item at a time would be copied again within each class.
 NI Z A an0(U n,C t)_(U i=58-CLZ(HD|HD-1+(((W)n<<Tw[t])+7>>3));A x=mb(i);xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;x)//an(), uncoloured
 A aa(U n,A x/*1*/)_(P(MINE(x)&&((W)n<<xw)+7>>3<=cap(x),_at(x)=0;AN(n,x))A y=an0(n,xt);MC(yV,xV,((W)xn<<Tw[xt])+7>>3);I(ytR,I(MINE(x),AZ(x))E(mRn(xn,xA)))x(y))
 A aA0(U n)_(A x=AN(0,aA(n));xx=emp(tC);x)

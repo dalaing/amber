@@ -17,12 +17,14 @@
  *      takes the same block with the next colour;
  *   3. small blocks are never coloured;
  *   4. a vector grown an item at a time from class 10 to class 13 keeps its
- *      contents, never writes past its block, and is copied about once a class
- *      (its copies are uncoloured), and the same vector shrunk and grown again by large
- *      steps keeps them too.
+ *      contents, never writes past its block, and is copied at most 4 times:
+ *      once a class, and once more if its first block was coloured (a coloured
+ *      payload's header gives half its block; the copies are uncoloured). The
+ *      same vector shrunk and grown again by large steps keeps them too.
  *
  * Checks 1 and 2 fail on a build that does not colour; 3 and 4 pass there too
- * (4 checks that growth copies about once a class, as without colours). */
+ * (3 copies there). Check 2 needs a build without -DDBG, where mr() returns the
+ * freed block (with DBG it returns 0). */
 #include "a.h"
 #include <stdio.h>
 
@@ -30,7 +32,7 @@ static int fails = 0;
 #define LP(x) ((L*)(x))
 #define CHECK(c, ...) do { if (!(c)) { fails++; printf("FAIL " __VA_ARGS__); printf("\n"); } } while (0)
 
-static W col(A x) { return (W)*(UC *)(x - 31) << 6; }       /* bytes the payload was moved */
+static W col(A x) { return (W)_cl(x) << 6; }                 /* bytes the payload was moved */
 static W blk(A x) { return x - HD - col(x); }                /* the block's start */
 static U bcls(A x) { return _b(x) + !!col(x); }               /* the block's class */
 
@@ -44,8 +46,8 @@ int main(void) {
             v[i] = an(100000 + 1000 * i, tL);                 /* 800 KB: class 14 */
             CHECK(!(v[i] & 63), "payload %d not 64-byte aligned: %#llx", i, (unsigned long long)v[i]);
             CHECK(col(v[i]) + HD + ((W)_n(v[i]) << 3) <= (W)HD << bcls(v[i]), "payload %d runs past its block", i);
-            CHECK(bcls(v[i]) == 14 && *(UC *)(blk(v[i]) + HD - 32) == 14, "payload %d: class %u, its block's start %u", i,
-                  bcls(v[i]), *(UC *)(blk(v[i]) + HD - 32));
+            CHECK(bcls(v[i]) == 14 && *(UC *)(blk(v[i]) + HD - 32) == 14,
+                  "payload %d: class %u, its block's start %u", i, bcls(v[i]), *(UC *)(blk(v[i]) + HD - 32));
             int s = (int)((v[i] >> 6) & 63);
             distinct += !seen[s]; seen[s] = 1;
         }
@@ -98,7 +100,7 @@ int main(void) {
         for (U i = 0; i < n1; i++) bad += LP(x)[i] != (L)i * 7;
         CHECK(!bad, "%d items changed while growing an item at a time", bad);
         CHECK(!past, "%d appends ran past the block", past);
-        CHECK(moves <= 6, "grown from class 10 to 13 an item at a time, the vector was copied %d times", moves);
+        CHECK(moves <= 4, "grown from class 10 to 13 an item at a time, the vector was copied %d times", moves);
         U sz[] = {9000, 70000, 5000, 33000, 60000};
         for (int k = 0; k < 5; k++) {
             U m = sz[k];

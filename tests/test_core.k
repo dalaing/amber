@@ -1439,10 +1439,11 @@ t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)
 t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"'parse";"'parse")]
 
 / ---- the allocator's large blocks (64 KB up; src/m.c colours them): vectors the parsers grow an item at a time
-/ from 32 KB to 1 MB keep their contents; blocks built in peach workers and freed on the main thread leave \m clean
+/ from 32 KB to 1 MB keep their contents; coloured blocks built in peach workers and freed on the main thread, and a
+/ coloured list kept live, leave \m clean
 t[`allocGrowFloats;{(#x;+/x;x~0.0+!131072)}`j?"[",(","/$!131072),"]";(131072;8589869056.0;1b)]
 t[`allocGrowChars;{(#x;+/`i$x;-12#x)}@,/$!200000;(1088890;56866720;"199998199999")]
-t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`pe({`j?\"[\",(\",\"/$!x),\"]\"};4096*1+!8);s:+/'p;q:`pe({,/$!x};20000*1+!8);c:#'q;p:0;q:0\n\\m\n`0:\" \"/$s,c\n");"8386560.0 33550336.0 75491328.0 134209536.0 209704960.0 301977600.0 411027456.0 536854528.0 88890 188890 288890 388890 488890 608890 728890 848890\n"]   / in a process of its own, as \m reports the running script's own text
+t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`pe({0.5*!x};40000*1+!8);s:+/'p;q:`pe({,/$!x};20000*1+!8);c:#'q;b:20000 2#!40000;p:0;q:0\n\\m\n`0:\" \"/$s,c,+/+/b\n");"399990000.0 1599980000.0 3599970000.0 6399960000.0 9999950000.0 14399940000.0 19599930000.0 25599920000.0 88890 188890 288890 388890 488890 608890 728890 848890 799980000\n"]   / in a process of its own, as \m reports the running script's own text
 
 hexpect[915]
 hreport"AMBER CORE"

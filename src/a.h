@@ -248,7 +248,7 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 #define TP(t) ((1<<ti|1<<tc|1<<ts|1<<tu|1<<tv|1<<tw|1<<tx|1<<tdt|1<<ttm)>>(t)&1)//packed types (+ date/time atoms)
 #define TU(t) LH(to,t,tx)                                         //function types (to..tx exactly; temporal tags sit above)
 
-//header bytes: b....... XXXXXXXX ....OEkt rrrrnnnn
+//header bytes: bc...... XXXXXXXX ....OEkt rrrrnnnn
 #define _V(x) ((V*)(x))       //pointer to data
 #define _n(x) (*(U *)((x)- 4))//length
 #define _r(x) (*(U *)((x)- 8))//refcount
@@ -259,6 +259,7 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 #define _at(x) (*(UC*)((x)-13))//amber attribute: 0=none 1=sorted(`s)
 #define _X(x) (*(A *)((x)-24))//ptr to next chunk in bucket
 #define _b(x) (*(UC*)((x)-32))//bucket index
+#define _cl(x) (*(UC*)((x)-31))//colour: 64-byte lines a large payload sits into its block (m.c); a coloured payload's _b is one less than its block's
 
 //tagged value bits (t=type,v=value,o=srcoffset,k=arity,x=ptr):
 // tttttttt........................vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv tc,ti,tu,tv,tw
