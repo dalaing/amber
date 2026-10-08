@@ -173,17 +173,22 @@ Z AM_TLS_IE A bkt[24];DBG(Z U lck;)
 // Colour. A block is aligned to its size (HD<<b), so every payload of 64 KB or more sat 64 bytes past a
 // multiple of the L1 set stride, and big vectors used together (a window's input and output, a group-by's
 // columns) fought over the same L1 sets. an() moves such a payload, with its header, c lines into its
-// block's spare room (no change of class): a thread's n-th large block gets c=n*199 mod CP/64, cut down to
-// the room left but 32 bytes (the gathers iC..o8 write up to 31 bytes past n, which then stay in the block).
+// block's spare room (no change of class): a thread's n-th large block gets c=CU*(n*199 mod CP/64/CU), cut
+// down to the room left but 32 bytes (the gathers iC..o8 write up to 31 bytes past n, which then stay in the block).
+// CU: on x86 a loop that reads one vector and writes another slows by 4-38% when the two sit one or two lines
+// apart mod 4 KB (4K aliasing: Zen 3 when the output is one line before, Intel when it is one or two after); colours
+// in steps of 3 lines keep every two large blocks at least 3 lines apart there. Apple's 16 KB keeps steps of 1.
 // c is whole 64-byte lines, so payloads stay 64-byte aligned (amber item 8). c is kept in a
 // spare header byte, at the payload and at the block's start (for the heap walk, OBS), and m0() moves the
 // header back, so the free lists and mb()'s splitting only see uncoloured blocks. Mapped files (b 0) and
 // blocks past the classes are never coloured.
 #if defined(__APPLE__)&&defined(__aarch64__)
 #define CP 16384//colour period: the L1 set stride (Apple M-series: 128 KB, 8-way)
+#define CU 1
 #else
-#define CP 4096 //x86 (32-48 KB, 8-12-way: 4 KB; untested); also Linux on arm64, Asahi on Apple M included,
-#endif          //where most cores' stride is 16 KB (Neoverse, Cortex-A7x): untested there too
+#define CP 4096 //x86 (32-48 KB, 8-12-way: 4 KB), and Linux on arm64 (Neoverse N2 measured: no gap there costs)
+#define CU 3    //colour step, in lines: 21 colours, 0 to 60 lines
+#endif
 #define CB 10   //smallest coloured class (64 KB blocks)
 #define _cl(x) (*(UC*)((x)-31))//colour, in 64-byte lines
 Z AM_TLS_IE U acn;//large blocks so far (this thread)
@@ -206,7 +211,7 @@ V mRn(U n,CO A*a){F(n,_R(a[i]))}
 V mrn(U n,CO A*a){F(n,mr(a[i]))}
 A1(mRa,mRn(xn,xA);x)
 
-NI Z A anc(A x,U i,U n,C t){I(i<L(bkt),W r=(HD<<i)-HD-(((W)n<<Tw[t])+7>>3),c=acn++*199u%(CP>>6);r=r>32?r-32>>6:0;I(c>r,c%=r+1)
+NI Z A anc(A x,U i,U n,C t){I(i<L(bkt),W r=(HD<<i)-HD-(((W)n<<Tw[t])+7>>3),c=acn++*199u%((CP>>6)/CU);r=r>32?(r-32>>6)/CU:0;I(c>r,c%=r+1)c*=CU;
  I(c,_b(x)=i;_cl(x)=c;x+=c<<6;MS((V*)(x-HD),0,HD);_cl(x)=c))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;return x;}//an's large blocks, coloured
 NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))U i=58-CLZ(HD|HD-1+(((W)n<<Tw[t])+7>>3));A x=mb(i);P(__builtin_expect(i>=CB,0),anc(x,i,n,t))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;x)
 A aV(C t,U n,CO V*v)_(A x=an(n,t);MC(xV,v,((W)n<<Tw[t])+7>>3);x)
