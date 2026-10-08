@@ -3,6 +3,7 @@
 scripts/probes/sqlite_sweep.py):
 
     python3 colour_sweep.py --arm base=DIR --arm c4096=DIR --arm c16384=DIR --cases colour_cases.k
+                            (an arm NAME=DIR:VAR=VAL runs DIR/amber with VAR=VAL in its environment)
                             [--rounds N] [--seed S] [--label L] [--cc CC] [--json OUT]
     python3 colour_sweep.py --summary JSON...      (one table over several jobs' JSON files)
 
@@ -93,8 +94,8 @@ def cc_version(cc: str) -> str:
         return cc
 
 
-def run(d: Path, cases: Path) -> dict:
-    env = dict(os.environ, AMBER_THREADS="1", NO_COLOR="1", AMBER_DIAG="0", AMBER_NO_EDIT="1")
+def run(d: Path, cases: Path, extra: dict | None = None) -> dict:
+    env = dict(os.environ, AMBER_THREADS="1", NO_COLOR="1", AMBER_DIAG="0", AMBER_NO_EDIT="1", **(extra or {}))
     out = subprocess.run([str(d / "amber"), str(cases)], cwd=d, env=env, stdin=subprocess.DEVNULL,
                          capture_output=True, text=True, timeout=600, check=True).stdout
     res = {}
@@ -219,7 +220,7 @@ def summary(files: list[Path]) -> str:
 def main() -> int:
     a = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     a.add_argument("--summary", nargs="+", type=Path, help="write one table over these jobs' JSON files")
-    a.add_argument("--arm", action="append", default=[], help="NAME=DIR, the base first")
+    a.add_argument("--arm", action="append", default=[], help="NAME=DIR[:VAR=VAL...], the base first")
     a.add_argument("--cases", type=Path)
     a.add_argument("--label", default=platform.node())
     a.add_argument("--cc", default=os.environ.get("CC", "cc"))
@@ -232,18 +233,22 @@ def main() -> int:
     else:
         if len(a.arm) < 2 or not a.cases:
             a.error("at least two --arm NAME=DIR (the base first) and --cases are needed (or --summary)")
-        arms = dict((n, Path(d).resolve()) for n, d in (x.split("=", 1) for x in a.arm))
+        arms, envs = {}, {}
+        for x in a.arm:
+            n, rest = x.split("=", 1)
+            d, *ev = rest.split(":")
+            arms[n], envs[n] = Path(d).resolve(), dict(e.split("=", 1) for e in ev)
         names = list(arms)
         cases = a.cases.resolve()
-        for d in arms.values():
-            run(d, cases)
+        for n, d in arms.items():
+            run(d, cases, envs[n])
         rnd = random.Random(a.seed)
         runs = []
         for rd in range(a.rounds):
             order = names[:]
             rnd.shuffle(order)
             for name in order:
-                runs.append({"round": rd, "arm": name, "times": run(arms[name], cases)})
+                runs.append({"round": rd, "arm": name, "times": run(arms[name], cases, envs[name])})
         r = {"label": a.label, "machine": platform.machine(), "system": platform.system(), "cpu": cpu_name(),
              "l1d": l1d(), "cc": cc_version(a.cc), "arms": names, "rounds": a.rounds,
              "analysis": analyse(runs, names, a.seed), "runs": runs}

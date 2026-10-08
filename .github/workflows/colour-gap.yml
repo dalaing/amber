@@ -15,7 +15,6 @@ on:
     branches: [colour-allocator]
     paths:
       - ".github/colour-ci/gap*"
-      - ".github/colour-ci/colour_sweep.py"
       - ".github/workflows/colour-gap.yml"
   workflow_dispatch:
     inputs:

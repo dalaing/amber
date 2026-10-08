@@ -8,7 +8,8 @@ name: colour-pin
 on:
   push:
     branches: [colour-allocator]
-    paths: [".github/colour-ci/pin/**", ".github/workflows/colour-pin.yml"]
+    paths: [".github/colour-ci/pin/pin.order", ".github/colour-ci/pin/pinbuild.sh", ".github/colour-ci/pin/pincheck.py",
+            ".github/workflows/colour-pin.yml"]
   workflow_dispatch:
 
 concurrency:

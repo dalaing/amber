@@ -1,0 +1,163 @@
+# Fork only, not for the pull request: where do the colour branch's costs (jsonints, small_alloc) come from?
+#
+# count: exact instruction counts (cachegrind) per case and per function, main against the branch, gcc (the
+# default build) and clang, so the extra work on the allocation paths shows without timing noise.
+#
+# time: main and the branch built with clang + lld, every function 64-byte aligned, and EVERY function the two
+# builds share unchanged laid out first at one address (pinorder.py, from a first unordered build of each), so
+# only the changed code moves. The branch carries .github/colour-ci/nocol.patch (CI only): AMBER_COLOUR=0 turns
+# its colours off, so one binary gives the branch's code with main's data placement (pcol-off) and with its own
+# (pcol). pcol-off/pbase is then the code's cost, pcol/pcol-off the placement's. The default gcc builds
+# of both (base, col: the PR's code as it is) are timed in the same rounds. Compare within a job only.
+name: colour-probe
+
+on:
+  push:
+    branches: [colour-allocator]
+    paths:
+      - "src/**"
+      - ".github/colour-ci/cgdiff.py"
+      - ".github/colour-ci/nocol.patch"
+      - ".github/colour-ci/colour_cases.k"
+      - ".github/colour-ci/colour_sweep.py"
+      - ".github/colour-ci/pin/pinorder.py"
+      - ".github/workflows/colour-probe.yml"
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: "paired rounds per timing job"
+        default: "15"
+
+concurrency:
+  group: colour-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  ROUNDS: ${{ inputs.rounds || '15' }}
+  UPSTREAM: https://github.com/BonucciAndrea/amber
+  CI: colour/.github/colour-ci
+
+jobs:
+  count:
+    name: count, ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: colour
+      - name: trees (main = the branch's merge-base with upstream main)
+        shell: bash
+        run: |
+          cd colour
+          git fetch -q "$UPSTREAM" main
+          b=$(git merge-base HEAD FETCH_HEAD)
+          echo "base $b, branch $(git rev-parse HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
+          for d in base cbase; do git worktree add -q --detach ../$d "$b"; done
+          for d in col ccol; do git worktree add -q --detach ../$d HEAD; done
+          sudo apt-get install -y -qq valgrind clang >/dev/null
+          valgrind --version
+      - name: build (gcc, the default build; clang for cbase and ccol)
+        shell: bash
+        run: |
+          for d in base col; do (cd $d && sh build.sh >/dev/null) && printf '%s\n' '+/!10' | ./$d/amber; done
+          for d in cbase ccol; do (cd $d && CC=clang sh build.sh >/dev/null) && printf '%s\n' '+/!10' | ./$d/amber; done
+          gcc --version | head -1; clang --version | head -1
+      - name: instructions per case
+        shell: bash
+        timeout-minutes: 75
+        run: |
+          python3 $CI/cgdiff.py --arm base=base --arm col=col --arm cbase=cbase --arm ccol=ccol \
+            --cases $CI/colour_cases.k --only jsonints,parseints,small_alloc,qgroup,s_msum100,s_mavg1000 \
+            --label "${{ matrix.os }}" --json count-${{ matrix.os }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: count-${{ matrix.os }}
+          path: count-${{ matrix.os }}.json
+
+  time:
+    name: time, ${{ matrix.os }}, rep ${{ matrix.rep }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, rep: 1}
+          - {os: ubuntu-24.04, rep: 2}
+          - {os: ubuntu-24.04, rep: 3}
+          - {os: ubuntu-24.04, rep: 4}
+          - {os: ubuntu-24.04-arm, rep: 1}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: colour
+      - name: trees
+        shell: bash
+        run: |
+          cd colour
+          git fetch -q "$UPSTREAM" main
+          b=$(git merge-base HEAD FETCH_HEAD)
+          echo "base $b, branch $(git rev-parse HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
+          for d in base pbase; do git worktree add -q --detach ../$d "$b"; done
+          for d in col pcol; do git worktree add -q --detach ../$d HEAD; done
+          (cd ../pcol && patch -p1 < "$GITHUB_WORKSPACE/$CI/nocol.patch")
+          sudo apt-get install -y -qq lld clang >/dev/null
+          lscpu | grep -E 'Model name|L1d' | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: build (gcc default builds; pinned clang builds, ordered from a first unordered pair)
+        shell: bash
+        run: |
+          for d in base col; do (cd $d && sh build.sh >/dev/null) && printf '%s\n' '+/!10' | ./$d/amber; done
+          for d in pbase pcol; do sh $CI/pin/pinbuild.sh $d /dev/null >/dev/null; done
+          python3 $CI/pin/pinorder.py full.order same.order pbase/amber pcol/amber | tee -a "$GITHUB_STEP_SUMMARY"
+          for d in pbase pcol; do sh $CI/pin/pinbuild.sh $d full.order; done
+          python3 $CI/pin/pincheck.py --allow 0 same.order pbase/amber pcol/amber
+      - name: same answers (and pcol at AMBER_COLOUR=0)
+        shell: bash
+        run: |
+          e='\l amber.k
+          \l std.k
+          N:1000000;PX:0.001*100000!2654435761*!N;{`0:$x}'"'"'(+/msum[100;PX];+/mmin[100;PX];+/|'"'"':PX;+/-'"'"':PX;#`j?"[",(","/$!100000),"]");'
+          a=$(cd base && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber); echo "$a"; test -n "$a"
+          for d in col pbase pcol; do test "$a" = "$(cd $d && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber)"; done
+          test "$a" = "$(cd pcol && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 AMBER_COLOUR=0 ./amber)"
+      - name: paired rounds
+        shell: bash
+        timeout-minutes: 100
+        run: |
+          python3 $CI/colour_sweep.py --arm pbase=pbase --arm pcol=pcol --arm pcol-off=pcol:AMBER_COLOUR=0 \
+            --arm base=base --arm col=col --cases $CI/colour_cases.k --cc cc \
+            --label "${{ matrix.os }} rep ${{ matrix.rep }}" --rounds "$ROUNDS" \
+            --json probe-${{ matrix.os }}-${{ matrix.rep }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: probe-${{ matrix.os }}-${{ matrix.rep }}
+          path: probe-${{ matrix.os }}-${{ matrix.rep }}.json
+
+  summary:
+    name: summary
+    needs: time
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/colour-ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: probe-*
+          path: results
+          merge-multiple: true
+      - name: one table over every timing job
+        shell: bash
+        run: python3 .github/colour-ci/colour_sweep.py --summary results/*.json

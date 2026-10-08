@@ -1,0 +1,16 @@
+diff --git a/src/m.c b/src/m.c
+index dc47f529b..c1141d099 100644
+--- a/src/m.c
++++ b/src/m.c
+@@ -211,7 +211,10 @@ V mRn(U n,CO A*a){F(n,_R(a[i]))}
+ V mrn(U n,CO A*a){F(n,mr(a[i]))}
+ A1(mRa,mRn(xn,xA);x)
+ 
+-NI Z A anc(A x,U i,U n,C t){I(i<L(bkt),W r=(HD<<i)-HD-(((W)n<<Tw[t])+7>>3),c=acn++*199u%((CP>>6)/CU);r=r>32?(r-32>>6)/CU:0;I(c>r,c%=r+1)c*=CU;
++// CI only (.github/colour-ci/nocol.patch, never in src): AMBER_COLOUR=0 makes every colour 0, so one binary
++// times the branch's code with main's data placement (off) and with its own (on). Read once: single thread.
++Z int aco_=-1;Z W aco(){I(aco_<0,C*e=getenv("AMBER_COLOUR");aco_=!(e&&*e=='0'))return aco_;}
++NI Z A anc(A x,U i,U n,C t){I(i<L(bkt),W r=(HD<<i)-HD-(((W)n<<Tw[t])+7>>3),c=acn++*199u%((CP>>6)/CU)*aco();r=r>32?(r-32>>6)/CU:0;I(c>r,c%=r+1)c*=CU;
+  I(c,_b(x)=i;_cl(x)=c;x+=c<<6;MS((V*)(x-HD),0,HD);_cl(x)=c))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;return x;}//an's large blocks, coloured
+ NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))U i=58-CLZ(HD|HD-1+(((W)n<<Tw[t])+7>>3));A x=mb(i);P(__builtin_expect(i>=CB,0),anc(x,i,n,t))xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;x)
+ A aV(C t,U n,CO V*v)_(A x=an(n,t);MC(xV,v,((W)n<<Tw[t])+7>>3);x)
