@@ -11,12 +11,10 @@ name: colour
 on:
   push:
     branches: [colour-allocator]
-    paths: ["src/**", ".github/workflows/colour.yml"]
-    paths-ignore:                       # the gap sweep has its own workflow (colour-gap.yml)
-      - ".github/colour-ci/gap*"
-      - ".github/workflows/colour-gap.yml"
-      - ".github/colour-ci/pin/**"
-      - ".github/workflows/colour-pin.yml"
+    paths:                              # the allocator and this sweep; the other sweeps have workflows of their own
+      - "src/**"
+      - ".github/colour-ci/colour_cases.k"
+      - ".github/workflows/colour.yml"
   workflow_dispatch:
     inputs:
       rounds:
