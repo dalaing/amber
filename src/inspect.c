@@ -88,7 +88,7 @@ static const char *iv_typename(UC t) {
  * both -- the same convention most "deep size" tools use. */
 static size_t iv_deepsize(A v, int depth) {
     if (_t0(v) || depth > 32) return sizeof(A);
-    size_t bucket = (size_t)HD << _b(v);
+    size_t bucket = (size_t)HD << (_b(v) + !!*(UC *)(v - 31));   /* a coloured payload's header gives one class less (m.c) */
     size_t raw = (size_t)HD + (((((size_t)_n(v)) << _w(v)) + 7) >> 3);
     size_t bytes = raw > bucket ? raw : bucket;
     if (TR(_t(v))) {

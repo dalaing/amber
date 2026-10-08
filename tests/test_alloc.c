@@ -5,7 +5,9 @@
  * -Dldstatic; see run_tests.sh), so it calls the allocator itself: an() to
  * allocate, mr() to free (it returns the block m0() pushed on its free list),
  * aa() to resize. A payload's colour, in 64-byte lines, is the spare header
- * byte at -31; its block (HD<<b bytes) starts HD plus the colour before it.
+ * byte at -31; its block (HD<<b bytes) starts HD plus the colour before it. A
+ * coloured payload's header gives its class as one less; the block's start
+ * keeps the true one.
  *
  *   1. large payloads are 64-byte aligned, and their colours vary mod 4 KB
  *      (the smaller period, so the check holds for either value of CP); a
@@ -30,6 +32,7 @@ static int fails = 0;
 
 static W col(A x) { return (W)*(UC *)(x - 31) << 6; }       /* bytes the payload was moved */
 static W blk(A x) { return x - HD - col(x); }                /* the block's start */
+static U cls(A x) { return _b(x) + !!col(x); }               /* the block's class */
 
 int main(void) {
     kinit();
@@ -40,7 +43,9 @@ int main(void) {
         for (int i = 0; i < K; i++) {
             v[i] = an(100000 + 1000 * i, tL);                 /* 800 KB: class 14 */
             CHECK(!(v[i] & 63), "payload %d not 64-byte aligned: %#llx", i, (unsigned long long)v[i]);
-            CHECK(col(v[i]) + HD + ((W)_n(v[i]) << 3) <= (W)HD << _b(v[i]), "payload %d runs past its block", i);
+            CHECK(col(v[i]) + HD + ((W)_n(v[i]) << 3) <= (W)HD << cls(v[i]), "payload %d runs past its block", i);
+            CHECK(cls(v[i]) == 14 && *(UC *)(blk(v[i]) + HD - 32) == 14, "payload %d: class %u, its block's start %u", i,
+                  cls(v[i]), *(UC *)(blk(v[i]) + HD - 32));
             int s = (int)((v[i] >> 6) & 63);
             distinct += !seen[s]; seen[s] = 1;
         }
@@ -53,7 +58,7 @@ int main(void) {
         for (int k = 0; k < 64; k++) {
             U n = (U)((262144 - 64) / 8) - (U)k;              /* longs that (nearly) fill a class-12 block */
             A x = an(n, tL);
-            if (col(x)) { coloured++; short_ += blk(x) + (HD << _b(x)) - (x + ((W)n << 3)) < 32; }
+            if (col(x)) { coloured++; short_ += blk(x) + (HD << cls(x)) - (x + ((W)n << 3)) < 32; }
             mr(x);
         }
         CHECK(!short_, "%d of %d coloured payloads left under 32 bytes after them", short_, coloured);
@@ -88,7 +93,7 @@ int main(void) {
             A y = aa(n, x);
             moves += y != x; x = y;
             LP(x)[n - 1] = (L)(n - 1) * 7;
-            past += col(x) + HD + ((W)n << 3) > (W)HD << _b(x);
+            past += col(x) + HD + ((W)n << 3) > (W)HD << cls(x);
         }
         for (U i = 0; i < n1; i++) bad += LP(x)[i] != (L)i * 7;
         CHECK(!bad, "%d items changed while growing an item at a time", bad);
