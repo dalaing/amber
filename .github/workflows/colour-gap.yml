@@ -1,0 +1,149 @@
+# Fork only, not for the pull request: the gap sweep. How each runner's kernels respond to the distance, mod
+# 4 KB, between their input and output buffers, to choose a colour policy that avoids the distances a CPU
+# dislikes.
+#
+# Each job builds main (the branch's merge-base with upstream main) and the branch at CP=4096 with
+# .github/colour-ci/gap.patch applied (CI only, never in src): AMBER_COLOUR_STEP=s gives the n-th large block
+# the colour n*s mod 64 lines, AMBER_COLOUR_LOG=1 logs each large block. gap_sweep.py first logs which blocks
+# each case makes, then times every case at every step and on main, one process each, in shuffled rounds.
+# It reports each step against s=0 (main's data placement), and s=0 against main: the control for the
+# branch's code layout. Compare within a job only: runners differ in CPU model.
+name: colour-gap
+
+on:
+  push:
+    branches: [colour-allocator]
+    paths:
+      - ".github/colour-ci/gap*"
+      - ".github/colour-ci/colour_sweep.py"
+      - ".github/workflows/colour-gap.yml"
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: "rounds per job"
+        default: "10"
+      steps:
+        description: "colour steps s, in 64-byte lines (0 first)"
+        default: "0,1,2,3,4,6,8,16,32,48,63"
+      upstream:
+        description: "repository whose main the branch is compared with"
+        default: "https://github.com/BonucciAndrea/amber"
+
+concurrency:
+  group: colour-gap-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  ROUNDS: ${{ inputs.rounds || '10' }}
+  STEPS: ${{ inputs.steps || '0,1,2,3,4,6,8,16,32,48,63' }}
+  UPSTREAM: ${{ inputs.upstream || 'https://github.com/BonucciAndrea/amber' }}
+
+jobs:
+  gap:
+    name: ${{ matrix.os }}, rep ${{ matrix.rep }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, rep: 1}        # x86-64: AMD EPYC and Intel Xeon models both turn up
+          - {os: ubuntu-24.04, rep: 2}
+          - {os: ubuntu-24.04, rep: 3}
+          - {os: ubuntu-24.04, rep: 4}
+          - {os: ubuntu-24.04-arm, rep: 1}    # Neoverse
+          - {os: macos-15-intel, rep: 1}      # Intel Mac
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: colour
+
+      - name: main (the branch's merge-base with upstream main) and the gap build (CP 4096 + gap.patch)
+        shell: bash
+        run: |
+          cd colour
+          git fetch -q "$UPSTREAM" main
+          b=$(git merge-base HEAD FETCH_HEAD)
+          echo "base $b, branch $(git rev-parse HEAD)" | tee -a "$GITHUB_STEP_SUMMARY"
+          git worktree add -q --detach ../base "$b"
+          if grep -q '^#define CP ' ../base/src/m.c; then echo "the base already colours"; exit 1; fi
+          git worktree add -q --detach ../gap HEAD
+          perl -pi -e 's/^#define CP [0-9]+/#define CP 4096/' ../gap/src/m.c
+          test "$(grep -c '^#define CP 4096' ../gap/src/m.c)" = 2
+          (cd ../gap && patch -p1 < "$GITHUB_WORKSPACE/colour/.github/colour-ci/gap.patch")
+          git -C ../gap diff --stat
+
+      - name: machine
+        shell: bash
+        run: |
+          {
+            echo "### ${{ matrix.os }}, rep ${{ matrix.rep }}"
+            echo '```'
+            if [ "$(uname)" = Darwin ]; then
+              sysctl machdep.cpu.brand_string hw.l1dcachesize hw.cachelinesize 2>/dev/null || true
+            else
+              lscpu | grep -E 'Model name|Vendor|L1d|^CPU\(s\)'
+              grep -H . /sys/devices/system/cpu/cpu0/cache/index0/{level,type,size,ways_of_associativity,coherency_line_size} || true
+            fi
+            cc --version | head -1
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: build both (the default build; gcc on Linux, clang on macOS)
+        shell: bash
+        run: |
+          for d in base gap; do (cd $d && sh build.sh) && printf '%s\n' '+/!10' | ./$d/amber; done
+
+      - name: same answers at s=0 and s=7 as main
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          e='\l amber.k
+          \l std.k
+          N:1000000;PX:0.001*100000!2654435761*!N;sy:`$"s",'"'"'$100!1000003!6364136223846793005*!N;g:group sy
+          {`0:$x}'"'"'(+/msum[100;PX];+/mavg[100;PX];+/mdev[100;PX];+/mmin[100;PX];#g;+/(value g)[;7];+/|'"'"':PX;+/-'"'"':PX;+/PX+1.0);'
+          a=$(cd base && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 ./amber)
+          echo "$a"; test -n "$a"
+          for s in 0 7; do
+            b=$(cd gap && printf '%s\n' "$e" | NO_COLOR=1 AMBER_THREADS=1 AMBER_COLOUR_STEP=$s ./amber)
+            test "$a" = "$b" || { echo "s=$s differs:"; echo "$b"; exit 1; }
+          done
+
+      - name: the gap sweep
+        shell: bash
+        timeout-minutes: 100
+        run: |
+          python3 colour/.github/colour-ci/gap_sweep.py --base base --gap gap \
+            --cases colour/.github/colour-ci/gap_cases.k --steps "$STEPS" --cc cc \
+            --label "${{ matrix.os }} rep ${{ matrix.rep }}" --rounds "$ROUNDS" \
+            --json gap-${{ matrix.os }}-${{ matrix.rep }}.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gap-${{ matrix.os }}-${{ matrix.rep }}
+          path: gap-${{ matrix.os }}-${{ matrix.rep }}.json
+
+  summary:
+    name: summary
+    needs: gap
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/colour-ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: gap-*
+          path: results
+          merge-multiple: true
+      - name: every job's tables
+        shell: bash
+        run: |
+          ls results
+          python3 .github/colour-ci/gap_sweep.py --summary results/*.json

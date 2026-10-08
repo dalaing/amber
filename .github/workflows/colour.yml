@@ -11,6 +11,9 @@ name: colour
 on:
   push:
     branches: [colour-allocator]
+    paths-ignore:                       # the gap sweep has its own workflow (colour-gap.yml)
+      - ".github/colour-ci/gap*"
+      - ".github/workflows/colour-gap.yml"
   workflow_dispatch:
     inputs:
       rounds:
