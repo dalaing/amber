@@ -1,0 +1,36 @@
+# Fork only, not for the pull request: the branch's full suite and gcc's ASan + LeakSanitizer leg on x86 Linux,
+# the colours' 4 KB period (the arm64 VM we use otherwise builds the 16 KB one).
+name: colour-asan
+
+on:
+  push:
+    branches: [colour-allocator]
+    paths: ["src/**", "tests/**", ".github/workflows/colour-asan.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  suites:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: machine
+        run: lscpu | grep -E 'Model name|L1d'; cc --version | head -1
+      - name: build
+        run: sh build.sh && printf '%s\n' '+/!10' | ./amber
+      - name: the full suite
+        timeout-minutes: 40
+        run: bash tests/run_tests.sh
+      - name: ASan, UBSan and LeakSanitizer (gcc), the quick suites
+        timeout-minutes: 45
+        env:
+          ASAN_OPTIONS: detect_leaks=1
+          UBSAN_OPTIONS: print_stacktrace=1
+        run: |
+          bash tests/run_tests.sh --quick --asan 2>&1 | tee asan.log
+          n=$(grep -cE 'LeakSanitizer:|AddressSanitizer:|runtime error:' asan.log || true)
+          echo "sanitizer reports: $n" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$n" = 0
