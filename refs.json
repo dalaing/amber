@@ -1,6 +1,5 @@
-{"run": "ci-x86-6: #129 final candidate b8979174a (= k2f's code) and two layout-only probes p16 774ed1cc9, p32 73ddf6872",
+{"run": "ci-x86-7: #129 update as it will be sent, r308/windows 42de2e39b, and pr/windows 5c0cf0a8d as he timed it",
  "base": {"repo": "upstream", "commit": "e5bff2a91877035d23c2e682b2798607d90158e6"},
- "refs": [{"name": "tip", "repo": "fork", "commit": "b8979174a4ab761289e55d6212dd156e06f3bbd5"},
-          {"name": "p16", "repo": "fork", "commit": "774ed1cc9714fc4d9ab7ff451886aed305b49cf5"},
-          {"name": "p32", "repo": "fork", "commit": "73ddf68726d9ea50f73b2f1e6659411043d09d1e"}],
- "rows": "rows.k", "rounds": 60, "target_us": 100000, "budget_s": 2400, "seed": 6}
+ "refs": [{"name": "windows", "repo": "fork", "commit": "5c0cf0a8dcf596395bf4ea8e01eda7e364e15bb5"},
+          {"name": "update", "repo": "fork", "commit": "42de2e39bb523a6f25a3c01e96021b51b6f2cc70"}],
+ "rows": "rows.k", "rounds": 60, "target_us": 100000, "budget_s": 2400, "seed": 7}
