@@ -1,4 +1,6 @@
-{"run": "ci-x86-2: #129 validation repeat (other hosts), upstream e5bff2a91 vs pr/windows 5c0cf0a8d",
+{"run": "ci-x86-3: #129 fix candidates, upstream e5bff2a91 vs pr/windows 5c0cf0a8d, C1 455ce2b5f (no NaN pre-pass) and reg 7c67f3965 (C1 + loads in registers)",
  "base": {"repo": "upstream", "commit": "e5bff2a91877035d23c2e682b2798607d90158e6"},
- "refs": [{"name": "windows", "repo": "fork", "commit": "5c0cf0a8dcf596395bf4ea8e01eda7e364e15bb5"}],
- "rows": "rows.k", "rounds": 60, "target_us": 100000, "budget_s": 1500, "seed": 2}
+ "refs": [{"name": "windows", "repo": "fork", "commit": "5c0cf0a8dcf596395bf4ea8e01eda7e364e15bb5"},
+          {"name": "c1", "repo": "fork", "commit": "455ce2b5fcff3c0ecdeb27061e4ac81a0440e351"},
+          {"name": "reg", "repo": "fork", "commit": "7c67f39650c06527374bdeebd3939f23d098606f"}],
+ "rows": "rows.k", "rounds": 60, "target_us": 100000, "budget_s": 2400, "seed": 3}
