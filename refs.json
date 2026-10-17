@@ -1,7 +1,7 @@
-{"run": "ci-x86-4: #129 round 3 on c1 455ce2b5f: k2ni 194cee11a (64-bit ints one block, two chains; floats' one-block loop out of line), k1ni 3034a6b8a (64-bit ints on main's code), k2f 63a042615 (probe of Zen 3 mmax w1000)",
+{"run": "ci-x86-5: #129 on six hosts (to catch Intel and repeat): windows 5c0cf0a8d, c1 455ce2b5f, k2ni 194cee11a, k2f 63a042615",
  "base": {"repo": "upstream", "commit": "e5bff2a91877035d23c2e682b2798607d90158e6"},
- "refs": [{"name": "c1", "repo": "fork", "commit": "455ce2b5fcff3c0ecdeb27061e4ac81a0440e351"},
+ "refs": [{"name": "windows", "repo": "fork", "commit": "5c0cf0a8dcf596395bf4ea8e01eda7e364e15bb5"},
+          {"name": "c1", "repo": "fork", "commit": "455ce2b5fcff3c0ecdeb27061e4ac81a0440e351"},
           {"name": "k2ni", "repo": "fork", "commit": "194cee11a4b15591a6d838f0b0d387333ad43f24"},
-          {"name": "k1ni", "repo": "fork", "commit": "3034a6b8a12ca0e65386fc830c77fc36e9ef6403"},
           {"name": "k2f", "repo": "fork", "commit": "63a0426156c334a763e8d8165e17433ca621a3ff"}],
- "rows": "rows.k", "rounds": 60, "target_us": 100000, "budget_s": 2400, "seed": 4}
+ "rows": "rows.k", "rounds": 60, "target_us": 100000, "budget_s": 2400, "seed": 5}

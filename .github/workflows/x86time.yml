@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        host: [a, b, c]
+        host: [a, b, c, d, e, f]
     steps:
       - uses: actions/checkout@v4
       - name: Host and compiler
