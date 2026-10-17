@@ -179,6 +179,7 @@ def order(sides, rnd):
 
 def run(cfg_path, out, host, local):
     cfg = json.load(open(cfg_path))
+    out = os.path.abspath(out)
     os.makedirs(out, exist_ok=True)
     here = os.path.dirname(os.path.abspath(cfg_path))
     rows = parse_rows(os.path.join(here, cfg.get("rows", "rows.k")))
@@ -200,6 +201,8 @@ def run(cfg_path, out, host, local):
     diffs = []
     for row in rows:
         a0 = answer(out, dirs["base"], row)
+        if not a0.startswith(row["name"] + " ") or " rc=" in a0:
+            sys.exit(f"answer {row['name']} on the base failed: {a0}")
         for s in sides[1:]:
             a = answer(out, dirs[s], row)
             if a != a0:
