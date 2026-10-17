@@ -1,0 +1,43 @@
+name: x86time
+
+# Paired x86-64 gcc timings of amber refs against a base (x86time.py; refs.json says what to time).
+# Runs on a push to an x86time/* branch that carries this file (the harness branch holds only this
+# workflow, the runner, its rows and refs.json; the code under test is fetched by commit).
+on:
+  push:
+    branches: ['x86time/**']
+
+permissions:
+  contents: read
+
+jobs:
+  time:
+    name: host ${{ matrix.host }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [a, b, c]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host and compiler
+        run: |
+          lscpu
+          cc --version | head -1
+          gcc --version | head -1
+          readlink -f "$(command -v cc)"
+          cc --version | head -1 | grep -q ' 13\.' || { echo "cc is not gcc 13"; exit 1; }
+      - name: Fetch, build, time
+        run: python3 x86time.py run refs.json out --host "${{ matrix.host }}"
+      - name: Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x86time-${{ matrix.host }}
+          path: |
+            out/results.md
+            out/meta.json
+            out/raw.jsonl
+            out/build-*.log
+          if-no-files-found: warn

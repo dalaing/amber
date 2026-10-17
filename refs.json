@@ -1,0 +1,4 @@
+{"run": "ci-x86-1: #129 validation, upstream e5bff2a91 vs pr/windows 5c0cf0a8d",
+ "base": {"repo": "upstream", "commit": "e5bff2a91877035d23c2e682b2798607d90158e6"},
+ "refs": [{"name": "windows", "repo": "fork", "commit": "5c0cf0a8dcf596395bf4ea8e01eda7e364e15bb5"}],
+ "rows": "rows.k", "rounds": 60, "target_us": 100000, "budget_s": 1500, "seed": 1}
